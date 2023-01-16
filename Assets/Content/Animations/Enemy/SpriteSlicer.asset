@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0188c453e67bf524f82e4b891825638c, type: 3}
+  m_Name: SpriteSlicer
+  m_EditorClassIdentifier: 
+  Textures:
+  - {fileID: 2800000, guid: cc170cbe588ed7243b1b8325cdb8e253, type: 3}
+  - {fileID: 2800000, guid: 3a3212c23296a854f8e1145b34cbbe70, type: 3}
+  - {fileID: 2800000, guid: 36eff6aba5601e14298d78b89c7679b1, type: 3}
+  - {fileID: 2800000, guid: f7e4e242d364b5a4388f37b8a7685817, type: 3}
+  - {fileID: 2800000, guid: 5c93492e013502f40967f018b2f7f47d, type: 3}
+  - {fileID: 2800000, guid: 861b162006cf7c346b15aa840a6ec6c2, type: 3}
+  - {fileID: 2800000, guid: 5e2d323d8f975154db2c3e58b649f73d, type: 3}
+  - {fileID: 2800000, guid: 1573f43c749c11d4291e34eff1dc3867, type: 3}
