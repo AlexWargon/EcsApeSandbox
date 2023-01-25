@@ -24,7 +24,6 @@ public partial class Test : WorldHolder {
         var container = DI.GetOrCreateContainer();
         container.Build(this);
 
-        
         Application.targetFrameRate = fps;
         _animationsHolder.Init();
         world = Worlds.Get(Worlds.Default);
@@ -299,7 +298,7 @@ sealed class TweensTestSystem : ISystem {
                     .WithLoop(2, LoopType.Yoyo)
                     .WithEasing(Easings.EasingType.ExponentialEaseInOut);
 
-                entity.doRotation(Vector3.zero, new Vector3(0, 0, Random.value > .5f ? 360 : -360), 0.2f).WithLoop(4, LoopType.Rastart);
+                entity.doRotation(Vector3.zero, new Vector3(0, 0, Random.value > .5f ? 360 : -360), 0.2f).WithLoop(4, LoopType.Restart);
 
                 entity.doMove(transform1.position, transform1.position + Vector3.up*3, .5f)
                     .WithLoop(2,LoopType.Yoyo)
@@ -335,6 +334,11 @@ sealed class SyncTransformsSystem : ISystem {
     }
 }
 
+public static class Animations
+{
+    public const string Idle = "Idle";
+    public const string Run = "Run";
+}
 sealed class TestPlayerAnimationSystem : ISystem {
     private IPool<SpriteAnimation> animations;
     private IPool<InputData> inputs;
@@ -344,7 +348,7 @@ sealed class TestPlayerAnimationSystem : ISystem {
         animations = world.GetPool<SpriteAnimation>();
         inputs = world.GetPool<InputData>();
     }
-
+    
     public void OnUpdate(float deltaTime) {
         
         foreach (ref var entity in _query) {
@@ -352,11 +356,11 @@ sealed class TestPlayerAnimationSystem : ISystem {
             ref var animation = ref animations.Get(ref entity);
 
             if (input.horizontal < .1F && input.vertical < .1F && input.horizontal > -.1F && input.vertical > -.1F)
-                animation.Play(AnimationStateEnum.Idle);
+                animation.Play(Animations.Idle);
             else 
-                animation.Play(AnimationStateEnum.Run);
+                animation.Play(Animations.Run);
             if (input.r) {
-                animation.Play(AnimationStateEnum.Run,4);
+                animation.Play(Animations.Run,4);
             }
         }
     }

@@ -10,6 +10,7 @@ namespace Wargon.Ecsape.Tweens {
             _systems = new Systems(world);
             _systems
                 .Add(new TweenAnimation())
+                
                 .Init();
         
             _fixedSystems = new Systems(world).Add<SyncTransformsTweenSystem>().Init();

@@ -26,13 +26,13 @@ namespace Animation2D {
             foreach (var entity in _query) {
                 ref var animation = ref animations.Get(entity.Index);
                 ref var render = ref renders.Get(entity.Index);
-                ref var frames = ref animation.AnimationList.GetState((int)animation.currentState).Frames;
+                ref var frames = ref animation.AnimationList.GetState(animation.currentState).Frames;
 
                 if (animation.frame >= frames.Length) {
                     if (--animation.times <= 0) {
                         if (animation.currentState != animation.nextState) {
                             animation.Play(animation.nextState);
-                            frames = ref animation.AnimationList.GetState((int)animation.currentState).Frames;
+                            frames = ref animation.AnimationList.GetState(animation.currentState).Frames;
                         }
                     }
                     animation.frame = 0;

@@ -203,14 +203,6 @@ public abstract class FieldInspector<T> : FieldInspector {
     protected abstract object Draw(int field, VisualElement root);
 }
 
-public class IntInspector : FieldInspector<int> {
-    private IntegerField Field = new IntegerField();
-    protected override object Draw(int field, VisualElement root) {
-        field = Field.value;
-        root.Add(Field);
-        return field;
-    }
-}
 [Serializable]
 public struct TestData1 : IComponent {
     public int ValueInt;

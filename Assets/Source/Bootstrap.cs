@@ -9,13 +9,13 @@ public class Bootstrap : MonoBehaviour {
     public AnimationsHolder AnimationsHolder;
     private void Awake() {
 
-        var menuservice = new UIService(
+        var uiService = new UIService(
             new UIFactory(_root._elementsList), 
             _root.MenuScreenRoot,
             _root.PopupRoot, 
             _root.CanvasGroup);
         
-        DI.Register<IUIService>().From(menuservice);
+        DI.Register<IUIService>().From(uiService);
         DI.Register<AnimationsHolder>().From(AnimationsHolder);
     }
 }
