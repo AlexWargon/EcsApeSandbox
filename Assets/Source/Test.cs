@@ -21,7 +21,7 @@ public partial class Test : WorldHolder {
     private Systems systems;
     private IUIService uiService;
     private void Awake() {
-        World.ENTITIES_CACH = 5000;
+        World.ENTITIES_CACHE = 5000;
         var container = DI.GetOrCreateContainer();
         container.Build(this);
 
@@ -60,7 +60,7 @@ public partial class Test : WorldHolder {
 
     private List<Transform> cubes = new List<Transform>();
     void SpawnCubes() {
-        foreach (var _ in 1600) {
+        foreach (var _ in 3600) {
             var pos = new Vector3(Random.Range(-16F, 16F), Random.Range(-16F, 16F), Random.Range(-16F, 16F));
             Instantiate(cube, pos, Quaternion.identity);
             
