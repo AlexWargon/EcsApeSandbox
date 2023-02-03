@@ -12,5 +12,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 04c56b33a4f945b899d943156028ce7d, type: 3}
   m_Name: RunTop
   m_EditorClassIdentifier: 
-  State: 0
+  State: RunTop
   Frames: []

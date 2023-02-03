@@ -4,9 +4,9 @@ using System.Runtime.CompilerServices;
 using UnityEngine;
 
 // ReSharper disable once CheckNamespace
-namespace Wargon.Ecsape.Tweens {
+namespace Wargon.Ecsape.Tween {
     public ref struct TweenBuilder {
-        private readonly Entity entity;
+        private Entity entity;
         private bool offest;
         
         internal TweenBuilder(Entity tween) {
@@ -37,7 +37,7 @@ namespace Wargon.Ecsape.Tweens {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public TweenBuilder OnComplete(Action callback) {
             CallbackTweenSystem.AddCallback(entity.Index, callback);
-            entity.Add(new OnTweenComplete());
+            entity.Add<OnTweenComplete>();
             return this;
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -75,7 +75,7 @@ namespace Wargon.Ecsape.Tweens {
     }
     public static class TranslationTweenBuilding {
         private static TweenBuilder AddTween(this in Entity entity, float duration) {
-            var tween = Worlds.Get(Worlds.Tween).CreateEntity();
+            var tween = World.Get(World.TweenIndex).CreateEntity();
             tween.Add(new Duration{value = duration});
             tween.Add<TweenProgress>();
             tween.Add(new Target{entity = entity});
@@ -83,7 +83,7 @@ namespace Wargon.Ecsape.Tweens {
         }
 
         // ReSharper disable Unity.PerformanceAnalysis
-        public static TweenBuilder doScale(this in Entity entity, Vector3 start, Vector3 end, float duration) {
+        public static TweenBuilder doScale(in this  Entity entity, Vector3 start, Vector3 end, float duration) {
             if (!entity.Has<Translation>()) return default;
 
             var builder = entity.AddTween(duration);
@@ -107,7 +107,7 @@ namespace Wargon.Ecsape.Tweens {
             return builder;
         }
         
-        public static TweenBuilder doScale(this in Entity entity, float start, float end, float duration) {
+        public static TweenBuilder doScale(this ref Entity entity, float start, float end, float duration) {
             if (!entity.Has<Translation>()) return default;
 
             var builder = entity.AddTween(duration);
@@ -119,7 +119,7 @@ namespace Wargon.Ecsape.Tweens {
             return builder;
         }
         
-        public static TweenBuilder doScaleX(this in Entity entity, float start, float end, float duration) {
+        public static TweenBuilder doScaleX(this ref Entity entity, float start, float end, float duration) {
             if (!entity.Has<Translation>()) return default;
 
             var builder = entity.AddTween(duration);
@@ -132,7 +132,7 @@ namespace Wargon.Ecsape.Tweens {
             return builder;
         }
 
-        public static TweenBuilder doScaleY(this in Entity entity, float start, float end, float duration) {
+        public static TweenBuilder doScaleY(this ref Entity entity, float start, float end, float duration) {
             if (!entity.Has<Translation>()) return default;
 
             var builder = entity.AddTween(duration);
@@ -145,7 +145,7 @@ namespace Wargon.Ecsape.Tweens {
             return builder;
         }
         
-        public static TweenBuilder doScaleZ(this in Entity entity, float start, float end, float duration) {
+        public static TweenBuilder doScaleZ(this ref Entity entity, float start, float end, float duration) {
             if (!entity.Has<Translation>()) return default;
 
             var builder = entity.AddTween(duration);
@@ -219,7 +219,7 @@ namespace Wargon.Ecsape.Tweens {
             return builder;
         }
 
-        public static TweenBuilder doMoveY(this in Entity entity, float start, float end, float duration) {
+        public static TweenBuilder doMoveY(this ref Entity entity, float start, float end, float duration) {
             if (!entity.Has<Translation>()) return default;
             
             var builder = entity.AddTween(duration);
@@ -232,7 +232,7 @@ namespace Wargon.Ecsape.Tweens {
             return builder;
         }
 
-        public static TweenBuilder doMoveZ(this in Entity entity, float start, float end, float duration) {
+        public static TweenBuilder doMoveZ(this ref Entity entity, float start, float end, float duration) {
             if (!entity.Has<Translation>()) return default;
             
             var builder = entity.AddTween(duration);
@@ -247,33 +247,33 @@ namespace Wargon.Ecsape.Tweens {
         }
     }
     public static class TransformTweenExtensions {
-        private static readonly Dictionary<int, int> transforms_entities_map = new Dictionary<int, int>();
+        private static readonly Dictionary<int, int> transforms_entities_map = new ();
         public static void Remove(int id) => transforms_entities_map.Remove(id);
         
         //[MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static Entity TransformToEntity(Transform transform) {
-            var transformHashCode = transform.GetHashCode();
+            var transformId = transform.GetInstanceID();
             
-            var world = Worlds.Get(Worlds.Tween);
+            var world = World.Get(World.TweenIndex);
             
             Entity entity;
             
-            if (transforms_entities_map.ContainsKey(transformHashCode)) 
+            if (transforms_entities_map.ContainsKey(transformId)) 
             {
-                entity = world.GetEntity(transforms_entities_map[transformHashCode]);
+                entity = world.GetEntity(transforms_entities_map[transformId]);
                 ref var to = ref entity.Get<TweeningObject>();
                 to.tweensCount++;
             }
             else 
             {
                 entity = world.CreateEntity();
-                transforms_entities_map.Add(transformHashCode,entity.Index);
+                transforms_entities_map.Add(transformId,entity.Index);
                 entity.Add(new TweeningObject{tweensCount = 1});
 
                 
                 entity.Add(new TransformReferenceTween {
                     value = transform,
-                    hashCode = transformHashCode
+                    instanceID = transformId
                 });
 
                 entity.Add(new Translation {

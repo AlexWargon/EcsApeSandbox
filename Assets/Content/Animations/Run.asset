@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 04c56b33a4f945b899d943156028ce7d, type: 3}
   m_Name: Run
   m_EditorClassIdentifier: 
-  State: 1
+  State: Run
   Frames:
   - {fileID: 21300008, guid: 8f3419b78b159df49a6bf255b11bca09, type: 3}
   - {fileID: 21300010, guid: 8f3419b78b159df49a6bf255b11bca09, type: 3}
