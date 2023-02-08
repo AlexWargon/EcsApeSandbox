@@ -14,8 +14,8 @@ namespace Animation2D {
         private Query _query;
         private IPool<SpriteAnimation> animations;
         private IPool<SpriteRender> renders;
-        public void OnCreate(World worldSource) {
-            _query = worldSource.GetQuery().Aspect<SpriteAnimationAspect>();
+        public void OnCreate(World world) {
+            _query = world.GetQuery().Aspect<SpriteAnimationAspect>();
         }
 
         public void OnUpdate(float deltaTime) {

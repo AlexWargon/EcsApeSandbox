@@ -7,7 +7,7 @@ namespace Animation2D {
     public class AnimationList : ScriptableObject {
         public string Name;
         public Animation2DFrames[] List;
-        private Dictionary<string, Animation2DFrames> map = new Dictionary<string, Animation2DFrames>();
+        private Dictionary<string, Animation2DFrames> map = new();
 
         public Animation2DFrames GetState(string state) {
 #if UNITY_EDITOR
@@ -35,5 +35,11 @@ namespace Animation2D {
                 map.Add(animation2D.State, animation2D);
             }
         }
+    }
+    
+    public static partial class Animations
+    {
+        public const string IDLE = "Idle";
+        public const string RUN = "Run";
     }
 }

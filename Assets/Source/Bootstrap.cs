@@ -8,7 +8,7 @@ public class Bootstrap : MonoBehaviour {
     public UIRoot _root;
     public AnimationsHolder AnimationsHolder;
     private void Awake() {
-
+        World.ENTITIES_CACHE = 256;
         var uiService = new UIService(
             new UIFactory(_root._elementsList), 
             _root.MenuScreenRoot,
@@ -17,5 +17,6 @@ public class Bootstrap : MonoBehaviour {
         
         DI.Register<IUIService>().From(uiService);
         DI.Register<AnimationsHolder>().From(AnimationsHolder);
+        DI.Register<IObjectPool>().From(new MyObjectPool());
     }
 }

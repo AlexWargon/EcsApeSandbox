@@ -5,8 +5,10 @@ using UnityEngine;
 
 // ReSharper disable once CheckNamespace
 namespace Wargon.Ecsape.Tween {
+    public delegate void EntityAction(Entity entity);
+
     public ref struct TweenBuilder {
-        private Entity entity;
+        internal Entity entity;
         private bool offest;
         
         internal TweenBuilder(Entity tween) {
@@ -34,6 +36,12 @@ namespace Wargon.Ecsape.Tween {
             entity.Add(new NextTween{entity = next.entity});
             return this;
         }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public TweenBuilder OnComplete(EntityAction action) {
+            entity.Add(new OnTweenCopleteEntityAction{action = action});
+            return this;
+        }
+        
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public TweenBuilder OnComplete(Action callback) {
             CallbackTweenSystem.AddCallback(entity.Index, callback);
@@ -74,11 +82,25 @@ namespace Wargon.Ecsape.Tween {
         }
     }
     public static class TranslationTweenBuilding {
+        private static World world;
+
+        private static World World {
+            get {
+                if (world == null) {
+                    world = World.Get(World.TweenIndex);
+                }
+
+                return world;
+            }
+        }
         private static TweenBuilder AddTween(this in Entity entity, float duration) {
-            var tween = World.Get(World.TweenIndex).CreateEntity();
-            tween.Add(new Duration{value = duration});
+
+            var tween = World.CreateEntity();
+            tween.Get<Duration>().value = duration;
+            tween.Get<Target>().entity = entity;
+            // tween.Add(new Duration{value = duration});
             tween.Add<TweenProgress>();
-            tween.Add(new Target{entity = entity});
+            // tween.Add(new Target{entity = entity});
             return new TweenBuilder(tween);
         }
 
@@ -86,9 +108,15 @@ namespace Wargon.Ecsape.Tween {
         public static TweenBuilder doScale(in this  Entity entity, Vector3 start, Vector3 end, float duration) {
             if (!entity.Has<Translation>()) return default;
 
-            var builder = entity.AddTween(duration);
-            builder.Add(new TranslationTween{endValue = end, startValue = start});
-            return builder;
+            var e = World
+                .CreateEntity(
+                    new Duration {value = duration}, 
+                    new Target {entity = entity},
+                    new TweenProgress(), 
+                    new TranslationTween {endValue = end, startValue = start}
+                    );
+            
+            return new TweenBuilder(e);
         }
         
         public static TweenBuilder doScale(this in Entity entity, Vector3 end, float duration) {
@@ -168,10 +196,32 @@ namespace Wargon.Ecsape.Tween {
         
         public static TweenBuilder doRotation(this in Entity entity, Vector3 start, Vector3 end, float duration) {
             if (!entity.Has<Translation>()) return default;
-
-            var builder = entity.AddTween(duration);
-            builder.Add(new TranslationRotationTween { endValue = end, startValue = start });
-            return builder;
+            //
+            // var builder = entity.AddTween(duration);
+            // builder.Add(new TranslationRotationTween { endValue = end, startValue = start });
+            //
+            // var e = World.Get(World.TweenIndex).GetArchetype(stackalloc int[4]{
+            //     Component<Duration>.Index, 
+            //     Component<Target>.Index,
+            //     Component<TweenProgress>.Index, 
+            //     Component<TranslationRotationTween>.Index
+            // }).CreateEntity();
+            // e.Get<Duration>().value = duration;
+            // e.Get<Target>().entity = entity;
+            //
+            // ref var translationTween = ref e.Get<TranslationRotationTween>();
+            // translationTween.endValue = end; translationTween.startValue = start;
+            //
+            var e = World
+                .CreateEntity(
+                    new Duration {value = duration}, 
+                    new Target {entity = entity},
+                    new TweenProgress(), 
+                    new TranslationRotationTween {endValue = end, startValue = start}
+                );
+            
+            
+            return new TweenBuilder(e);
         }
 
         public static TweenBuilder doRotation(this in Entity entity, Quaternion end, float duration) {
@@ -200,10 +250,16 @@ namespace Wargon.Ecsape.Tween {
 
         public static TweenBuilder doMove(this in Entity entity, Vector3 start, Vector3 end, float duration) {
             if (!entity.Has<Translation>()) return default;
+
+            var e = World
+                .CreateEntity(
+                    new Duration {value = duration}, 
+                    new Target {entity = entity},
+                    new TweenProgress(), 
+                    new TranslationMoveTween {endValue = end, startValue = start}
+                );
             
-            var builder = entity.AddTween(duration);
-            builder.Add(new TranslationMoveTween { endValue = end, startValue = start });
-            return builder;
+            return new TweenBuilder(e);
         }
 
         public static TweenBuilder doMoveX(this in Entity entity, float start, float end, float duration) {
@@ -269,17 +325,16 @@ namespace Wargon.Ecsape.Tween {
                 entity = world.CreateEntity();
                 transforms_entities_map.Add(transformId,entity.Index);
                 entity.Add(new TweeningObject{tweensCount = 1});
-
                 
                 entity.Add(new TransformReferenceTween {
-                    value = transform,
-                    instanceID = transformId
+                     value = transform,
+                     instanceID = transformId
                 });
-
+                
                 entity.Add(new Translation {
-                    scale = transform.localScale,
-                    rotation = transform.rotation,
-                    position = transform.position
+                     scale = transform.localScale,
+                     rotation = transform.rotation,
+                     position = transform.position
                 });
             }
 

@@ -1,5 +1,4 @@
 using UnityEngine;
-using Wargon.Ecsape;
 
 namespace Wargon.Ecsape.Tween {
     public class TweenWorld : WorldHolder {
@@ -17,16 +16,5 @@ namespace Wargon.Ecsape.Tween {
         private void Update() {
             systems.Update(Time.deltaTime);
         }
-    }
-}
-
-public abstract class WorldHolder : MonoBehaviour {
-    protected World world;
-    [SerializeField] private int entitiesCount;
-    [SerializeField] private int archetypesCount;
-
-    private void LateUpdate() {
-        entitiesCount = world.ActiveEntitiesCount;
-        archetypesCount = world.ArchetypesCountInternal();
     }
 }

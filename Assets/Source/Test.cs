@@ -2,17 +2,14 @@ using System;
 using System.Collections.Generic;
 using Animation2D;
 using UnityEngine;
-using UnityEngine.Pool;
 using Wargon.Ecsape;
+using Wargon.Ecsape.Components;
 using Wargon.Ecsape.Tween;
 using Wargon.UI;
 using Object = UnityEngine.Object;
 using Random = UnityEngine.Random;
 
-public class TestText {
-    public string text;
-}
-public partial class Test : WorldHolder {
+public class Test : WorldHolder {
     public static int cubeID;
     [SerializeField] private int fps;
     [SerializeField] private Transform cube;
@@ -20,18 +17,22 @@ public partial class Test : WorldHolder {
     private Transform activeCube;
     private Systems systems;
     private IUIService uiService;
+    private IObjectPool objectPool;
     private void Awake() {
-        World.ENTITIES_CACHE = 5000;
-        var container = DI.GetOrCreateContainer();
-        container.Build(this);
-
+        World.ENTITIES_CACHE = 256;
+        DI.Build(this);
+        
+        DI.Register<IEntityFabric>().From(new EntityFabric().Init(world));
+        
         Application.targetFrameRate = fps;
         animationsHolder.Init();
         world = World.GetOrCreate(World.DEFAULT);
+        (DI.Get<IObjectPool>() as MyObjectPool)?.SetWorld(world);
         Fabric.Init(world);
         systems = new Systems(world);
         systems
-            .AddInjector(container)
+            .AddInjector(DI.GetOrCreateContainer())
+            .Add(new ShmupGame())
             .Add(new Systems.Group("updates")
                 //.Add<TestSystem>()
                 //.Add<TestEntitySystem>()
@@ -39,11 +40,13 @@ public partial class Test : WorldHolder {
                 //.Add<ChangeSizeSystem>()
                 //.Add(new ShotSystem(cube))
                 .Add<ConvertEntitySystem>()
-                .Add<TestInputSystem>()
+                
+                //.Add<PlayerInputSystem>()
                 .Add<TestPlayerAnimationSystem>()
                 .Add<Animation2DSystem>()
                 .Add<TweensTestSystem>()
 
+                .Add<OnTriggerSystem>()
                 .Add<SyncTransformsSystem>()
                 //.Add<TestData1System>()
                 //.Add<TestFilterSystem1>()
@@ -52,7 +55,7 @@ public partial class Test : WorldHolder {
             
             .Init();
 
-        SpawnCubes();
+        //SpawnCubes();
         //SpawnFilterTestEntities();
 
         //world.EntityManager.Test(666);
@@ -60,9 +63,9 @@ public partial class Test : WorldHolder {
 
     private List<Transform> cubes = new List<Transform>();
     void SpawnCubes() {
-        foreach (var _ in 3600) {
+        foreach (var _ in 1000) {
             var pos = new Vector3(Random.Range(-16F, 16F), Random.Range(-16F, 16F), Random.Range(-16F, 16F));
-            Instantiate(cube, pos, Quaternion.identity);
+            objectPool.Spawn(cube, pos, Quaternion.identity);
             
             //var go = GameObjectPool.Instance.Spawn(cube, pos, Quaternion.identity);
             // e.Add(new TransformReference { value = go.transform, instanceID = cube.GetInstanceID()});
@@ -82,32 +85,10 @@ public partial class Test : WorldHolder {
 
 }
 
-struct DelayToDestroy  : IComponent{
-    public float time;
-}
-
-sealed class TestDestroySystem : ISystem {
-    public void OnCreate(World worldSource) {
-        query = worldSource.GetQuery().With<DelayToDestroy>();
-    }
-
-    private IPool<DelayToDestroy> pool;
-    private Query query;
-    public void OnUpdate(float deltaTime) {
-        foreach (ref var entity in query) {
-            ref var delay = ref pool.Get(ref entity);
-            delay.time -= deltaTime;
-            if (delay.time <= 0) {
-                //Debug.Log($"TRY TO DESTROY ENTITY {entity.Index} {delay.time}");
-                entity.Destroy();
-            }
-        }
-    }
-}
 sealed class ShotSystem : ISystem {
     private readonly GameObject bullet;
     public ShotSystem(GameObject bullet) => this.bullet = bullet;
-    public void OnCreate(World worldSource) {}
+    public void OnCreate(World world) {}
     public void OnUpdate(float deltaTime) {
         if (Input.GetKey(KeyCode.Space)) {
             Fabric.Bullet(bullet,Vector3.zero, Quaternion.identity, 20f, Vector3.up);
@@ -116,10 +97,10 @@ sealed class ShotSystem : ISystem {
 }
 
 public static class Fabric {
-    private static World _world;
-    public static void Init(World world) => _world = world;
+    private static World world;
+    public static void Init(World world) => Fabric.world = world;
     public static Entity Bullet(GameObject view, Vector3 pos, Quaternion rotation, float speed, Vector3 dir) {
-        var e = _world.CreateEntity();
+        var e = world.CreateEntity();
         var go = Object.Instantiate(view, pos, rotation);
         e.Get<TransformReference>().value = go.transform;
         e.Add(new Translation{position = pos, rotation = rotation});
@@ -128,80 +109,16 @@ public static class Fabric {
         return e;
     }
 }
-struct ClearTestComponent : IComponent, IClearOnEndOfFrame { }
 
-struct ViewID : IComponent {
-    public int value;
-}
 [Serializable]
-public struct TransformReference : IComponent {
-    public Transform value;
-    public int instanceID;
-
-}
-[Serializable]
-struct MoveSpeed : IComponent {
+public struct MoveSpeed : IComponent {
     public float value;
 }
 
 [Serializable] struct MoveDirection : IComponent {
     public Vector3 value;
 }
-[Serializable]
-struct ChangeSize : IComponent {
-    public float minScale;
-    public float maxScale;
-    public float speed;
-    public bool grow;
-}
 
-
-public static class Service {
-    private static Dictionary<string, object> instances;
-
-    static Service() {
-        instances = new Dictionary<string, object>();
-    }
-
-    public static T GetOrCreate<T>() where T : class, new() {
-        var name = nameof(T);
-        if (instances.TryGetValue(name, out var item))
-            return (T)item;
-        instances.Add(name, new T());
-        return (T)instances[name];
-    }
-}
-    
-    
-public sealed class GameObjectPool {
-    public static GameObjectPool Instance;
-    static GameObjectPool() {
-        Instance = new GameObjectPool();
-    }
-    private Dictionary<int, IObjectPool<Transform>> _pools = new ();
-    private Vector2 UnActivePosition = new (100000, 100000);
-    public Transform Spawn(Transform prefab, Vector3 position, Quaternion rotation) {
-        var id = prefab.GetInstanceID();
-        if (_pools.TryGetValue(id, out var pool)) {
-            var item = pool.Get();
-            item.position = position;
-            item.rotation = rotation;
-            return item;
-        }
-        var newPool = new ObjectPool<Transform>(
-            () => Object.Instantiate(prefab), 
-            x => x.gameObject.SetActive(true), 
-            x=> x.gameObject.SetActive(false));
-        _pools.Add(id, newPool);
-        return Spawn(prefab,position, rotation);
-    }
-
-    public int GetID(Transform prefab) => prefab.GetInstanceID();
-    public void Release(Transform view, int id) {
-        //view.gameObject.SetActive(false);
-        _pools[id].Release(view);
-    }
-}
 [Serializable]
 public struct Health : IComponent {
     public int current;
@@ -214,25 +131,20 @@ public struct DamageEvent : IComponent {
     public Entity to;
 }
 [Serializable]
-public struct Crit : IComponent, INew {
+public struct Crit : IComponent{
     public int size;
     public float chance;
-
-    void INew.New() {
-        
-    }
 }
-[Serializable]
+
 sealed class SetCritDamageSystem : ISystem {
     private Query query;
     private IPool<Crit> crit;
     private IPool<DamageEvent> damage;
 
-
-    public void OnCreate(World worldSource) {
-        query = worldSource.GetQuery<DamageEvent>();
-        crit = worldSource.GetPool<Crit>();
-        damage = worldSource.GetPool<DamageEvent>();
+    public void OnCreate(World world) {
+        query = world.GetQuery<DamageEvent>();
+        crit = world.GetPool<Crit>();
+        damage = world.GetPool<DamageEvent>();
     }
 
     public void OnUpdate(float deltaTime) {
@@ -247,129 +159,102 @@ sealed class SetCritDamageSystem : ISystem {
     }
 }
 
-sealed class SetDamageToHealthSystem : ISystem {
-    private Query query;
-    private IPool<Health> healths;
-    private IPool<DamageEvent> damageEvents;
-    public void OnCreate(World worldSource) {
-        query = worldSource.GetQuery<Health, DamageEvent>();
-        healths = worldSource.GetPool<Health>();
-        damageEvents = worldSource.GetPool<DamageEvent>();
-    }
-
-    public void OnUpdate(float deltaTime) {
-        foreach (ref var entity in query) {
-            ref var h = ref healths.Get(ref entity);
-            ref var d = ref damageEvents.Get(ref entity);
-            h.current -= d.amount;
-            h.current = Mathf.Clamp(h.current,0, h.max);
-        }
-    }
-}
-
-sealed class TestInputSystem : ISystem {
+sealed class PlayerInputSystem : ISystem {
 
     private IPool<InputData> inputs;
-    private Query _query;
-    private TestText text;
-    public void OnCreate(World worldSource) {
-        _query = worldSource.GetQuery().With<InputData>();
+    private Query query;
+    public void OnCreate(World world) {
+        query = world.GetQuery().With<InputData>();
     }
 
     public void OnUpdate(float deltaTime) {
         var h = Input.GetAxis("Horizontal");
         var v = Input.GetAxis("Vertical");
-        var r = Input.GetKeyDown(KeyCode.R);
+        var r = Input.GetKey(KeyCode.R);
 
-        foreach (ref var entity in _query) {
+        foreach (ref var entity in query) {
             ref var input = ref inputs.Get(ref entity);
             input.horizontal = h;
             input.vertical = v;
-            input.r = r;
+            input.fire = r;
+        }
+    }
+}
+
+struct TestEvent : IComponent { }
+sealed class TestEventReactSystem : ISystem {
+    private World world;
+    private Query query;
+    public void OnCreate(World world) {
+        this.world = world;
+        query = this.world.GetQuery<TestEvent>();
+    }
+
+    public void OnUpdate(float deltaTime) {
+        foreach (var entity in query) {
+            //Debug.Log($"entity {entity.Index} triggered with {nameof(TestEvent)}");
+        }
+    }
+}
+sealed class TestEventSystem : ISystem, IEventSystem<TestEvent> {
+    private World world;
+    public void OnCreate(World world) {
+        this.world = world;
+    }
+
+    public void OnUpdate(float deltaTime) {
+        if (Input.GetKeyDown(KeyCode.E)) {
+            for (int i = 0; i < 10000; i++) {
+                world.CreateEntity().Add<TestEvent>();
+            }
         }
     }
 }
 
 sealed class TweensTestSystem : ISystem {
-    private Query _query;
+    private Query query;
     private IPool<Translation> translations;
-    public void OnCreate(World worldSource) {
-        _query = worldSource.GetQuery().With<Translation>().Without<BlockJump>();
-        translations = worldSource.GetPool<Translation>();
+    public void OnCreate(World world) {
+        query = world.GetQuery().With<Translation>().Without<BlockJump>();
     }
 
     public void OnUpdate(float deltaTime) {
         if (Input.GetKeyDown(KeyCode.Space)) {
-            foreach (var entity in _query) {
-
-                // e.doScale(1, 5, 2f)
-                //     .WithEasing(Easings.Type.QuadraticEaseOut)
-                //     .Then(e.doRotation(new Vector3(0, 720, 0), 2f)
-                //         .WithEasing(Easings.Type.QuadraticEaseOut)
-                //         .Then(e.doScale(5, 1, 2f)
-                //             .WithEasing(Easings.Type.QuadraticEaseOut)
-                //             .OnComplete(() => {
-                //                 e.Add<StaticTag>();
-                //             })));
+            foreach (ref var entity in query) {
 
                 ref var translation = ref translations.Get(entity.Index);
                 entity.doScale(Vector3.one, new Vector3(2, 1, 2), .5f)
                     .WithLoop(2, LoopType.Yoyo)
                     .WithEasing(Easings.EasingType.ExponentialEaseInOut);
-
-                entity.doRotation(Vector3.zero, new Vector3(0, 0, Random.value > .5f ? 360 : -360), 0.2f).WithLoop(4, LoopType.Restart);
-
+                
+                entity.doRotation(Vector3.zero, new Vector3(0, 0, Random.value > .5f ? 360 : -360), 0.2f)
+                    .WithLoop(4, LoopType.Restart);
+                
                 entity.doMove(translation.position, translation.position + Vector3.up * 3, .5f)
                     .WithLoop(2, LoopType.Yoyo)
-                    .OnComplete(() => entity.Remove<BlockJump>());
+                    .OnComplete(e => e.Remove<BlockJump>());
                 entity.Add<BlockJump>();
+
             }
         }
     }
 }
+
 public struct BlockJump : IComponent{}
-sealed class SyncTransformsSystem : ISystem {
-    Query _query;
-    IPool<TransformReference> transforms;
-    IPool<Translation> translations;
-    public void OnCreate(World worldSource) {
-        _query = worldSource.GetQuery()
-            .With<Translation>()
-            .With<TransformReference>()
-            .Without<StaticTag>();
-    }
 
-    public void OnUpdate(float deltaTime) {
-        if(_query.IsEmpty) return;
-        foreach (var entity in _query) {
-            ref var transform = ref transforms.Get(entity.Index);
-            ref var translation = ref translations.Get(entity.Index);
-            transform.value.position = translation.position;
-            transform.value.rotation = translation.rotation;
-            transform.value.localScale = translation.scale;
-        }
-        //Debug.Log(_query.Count);
-    }
-}
 
-public static class Animations
-{
-    public const string Idle = "Idle";
-    public const string Run = "Run";
-}
+
 sealed class TestPlayerAnimationSystem : ISystem {
     private IPool<SpriteAnimation> animations;
     private IPool<InputData> inputs;
-    private Query _query;
-    public void OnCreate(World worldSource) {
-        _query = worldSource.GetQuery().With<SpriteAnimation>().With<InputData>();
-        animations = worldSource.GetPool<SpriteAnimation>();
-        inputs = worldSource.GetPool<InputData>();
+    private Query query;
+    public void OnCreate(World world) {
+        query = world.GetQuery().With<SpriteAnimation>().With<InputData>();
     }
     
     public void OnUpdate(float deltaTime) {
         
-        foreach (ref var entity in _query) {
+        foreach (ref var entity in query) {
             ref var input = ref inputs.Get(ref entity);
             ref var animation = ref animations.Get(ref entity);
 
@@ -377,7 +262,7 @@ sealed class TestPlayerAnimationSystem : ISystem {
                 animation.Play(Animations.Idle);
             else 
                 animation.Play(Animations.Run);
-            if (input.r) {
+            if (input.fire) {
                 animation.Play(Animations.Run,4);
             }
         }
@@ -394,17 +279,203 @@ public struct MoveDirections {
     public const int DOWN_LEFT = 6;
     public const int DOWN_RIGHT = 7;
 }
-
+[Serializable]
 public struct Direction : IComponent {
-    public float value;
+    public Vector3 value;
+}
+
+[Serializable]
+public struct IsProjectile : IComponent{}
+[Serializable]
+public struct Damage : IComponent {
+    public int value;
+}
+
+sealed class ShmupGame : Systems.Group {
+    public ShmupGame() : base() {
+            Add<PlayerInputSystem>()
+            .Add<ShootProjectileSystem>()
+            .Add<ProjectileMoveSystem>()
+            .Add<SetDamageSystem>()
+            .Add<OnTakeDamageHitReactionSystem>()
+            .Add<SetDamageToHealthSystem>()
+            .Add<OnDeadSystem>()
+            .Add<PoolObjectLifeTimeSystem>();
+    }
+}
+sealed class ProjectileMoveSystem : ISystem {
+    private Query query;
+    private IPool<Direction> directions;
+    private IPool<MoveSpeed> speeds;
+    private IPool<Translation> translations;
+    public void OnCreate(World world) {
+        query = world.GetQuery()
+            .With<IsProjectile>()
+            //.With<Direction>()
+            .With<MoveSpeed>()
+            .With<Translation>().With<Active>();
+    }
+
+    public void OnUpdate(float deltaTime) {
+        
+        foreach (ref var entity in query) {
+            ref var translation = ref translations.Get(ref entity);
+            ref var speed = ref speeds.Get(ref entity);
+            //ref var direction = ref directions.Get(ref entity);
+
+            translation.position += translation.rotation*Vector3.right * speed.value * deltaTime;
+        }
+    }
+}
+
+sealed class SetDamageSystem : ISystem, IEventSystem<DamageEvent> {
+    public void OnCreate(World world) {
+        query = world.GetQuery().With<CollidedWith>().With<Damage>().Without<Dead>();;
+    }
+
+    private IPool<CollidedWith> collisions;
+    private IPool<Damage> damages;
+    private Query query;
+    public void OnUpdate(float deltaTime) {
+        foreach (ref var entity in query) {
+            ref var collision = ref collisions.Get(ref entity);
+            ref var damage = ref damages.Get(ref entity);
+            
+            collision.entity.Add(new DamageEvent {
+                from = entity,
+                to = collision.entity,
+                amount = damage.value
+            });
+        }
+    }
+}
+
+sealed class OnTakeDamageHitReactionSystem : ISystem {
+    public void OnCreate(World world) {
+        query = world.GetQuery().With<Translation>().With<DamageEvent>().Without<Dead>();;
+    }
+
+    private Query query;
+    private IPool<Translation> translations;
+    public void OnUpdate(float deltaTime) {
+        foreach (ref var entity in query) {
+            ref var translation = ref translations.Get(ref entity);
+            entity.doScale(translation.scale, translation.scale * 0.8f, 0.2f)
+                .WithLoop(2, LoopType.Yoyo)
+                .WithEasing(Easings.EasingType.BounceEaseIn);
+        }
+    }
+}
+public struct Dead : IComponent {}
+sealed class SetDamageToHealthSystem : ISystem {
+    private Query query;
+    private IPool<Health> healths;
+    private IPool<DamageEvent> damageEvents;
+    public void OnCreate(World world) {
+        query = world.GetQuery<Health, DamageEvent>().Without<Dead>();
+    }
+
+    public void OnUpdate(float deltaTime) {
+        foreach (ref var entity in query) {
+            ref var h = ref healths.Get(ref entity);
+            ref var d = ref damageEvents.Get(ref entity);
+            h.current -= d.amount;
+            h.current = Mathf.Clamp(h.current,0, h.max);
+            if(h.current==0)
+                entity.Add<Dead>();
+        }
+    }
+}
+
+sealed class OnDeadSystem : ISystem {
+    public void OnCreate(World world) {
+        query = world.GetQuery().With<Dead>().With<Translation>();
+    }
+
+    private Query query;
+    public void OnUpdate(float deltaTime) {
+        foreach (ref Entity entity in query) {
+            entity.doScale(1f, 0.8f, 0.5f)
+                .WithLoop(4, LoopType.Yoyo)
+                .WithEasing(Easings.EasingType.BounceEaseOut)
+                .OnComplete(e=>e.Destroy());
+        }
+    }
+}
+[Serializable]
+public struct SpreadWeapon : IComponent {
+    public EntityLink projectile;
+    public float delay;
+    public float delayCounter;
+    public float spread;
+    public int count;
+    public Transform firePoint;
+}
+
+public struct ShotEvent : IComponent { }
+sealed class ShootProjectileSystem : ISystem, IEventSystem<ShotEvent> {
+    private Query query;
+    private IPool<SpreadWeapon> weapons;
+    private IPool<InputData> inputs;
+    private IEntityFabric fabric;
+    public void OnCreate(World world) {
+        query = world.GetQuery().With<SpreadWeapon>().With<InputData>().Without<Dead>();
+    }
+
+    public void OnUpdate(float deltaTime) {
+
+        foreach (ref var entity in query) {
+            ref var weapon = ref weapons.Get(ref entity);
+            ref var input = ref inputs.Get(ref entity);
+
+            if (input.fire) {
+                
+                if (weapon.delayCounter > weapon.delay) {
+                    
+                    for (int i = 0; i < weapon.count; i++) {
+
+                        var z = weapon.firePoint.eulerAngles.z + Random.Range(-weapon.spread, weapon.spread);
+                        var rotation = Quaternion.Euler(0, 0,z);
+                        Debug.Log(rotation.eulerAngles.z);
+                        fabric.Instantiate(weapon.projectile, weapon.firePoint.position, rotation);
+                        //b.Get<Direction>().value = rotation * Vector3.right;
+                    }
+                    weapon.delayCounter = 0;
+                }
+            }
+
+            weapon.delayCounter += deltaTime;
+            entity.Add<ShotEvent>();
+        }
+    }
+}
+
+sealed class PoolObjectLifeTimeSystem : ISystem {
+    private IObjectPool pool;
+    private Query query;
+    private IPool<Active> views;
+    public void OnCreate(World world) {
+        query = world.GetQuery().With<Active>();
+    }
+
+    public void OnUpdate(float deltaTime) {
+        foreach (ref var entity in query) {
+            ref var view = ref views.Get(ref entity);
+            view.lifeTime -= deltaTime;
+            if (view.lifeTime < 0) {
+                pool.Release(view.view, view.id);
+                entity.Remove<Active>();
+            }
+        }
+    }
 }
 sealed class CharacterAnimationSystem : ISystem {
     private Query query;
     private IPool<SpriteAnimation> animtions;
     private IPool<Translation> translations;
     private IPool<Direction> directions;
-    public void OnCreate(World worldSource) {
-        query = worldSource.GetQuery().With<SpriteAnimation>().With<Translation>();
+    public void OnCreate(World world) {
+        query = world.GetQuery().With<SpriteAnimation>().With<Translation>();
         
     }
 

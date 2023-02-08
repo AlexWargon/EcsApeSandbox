@@ -41,8 +41,8 @@ namespace Wargon.Ecsape.Tween {
         private IPool<TweenProgress> progresses;
         private IPool<Target> targets;
 
-        public void OnCreate(World worldSource) {
-            _query = worldSource.GetQuery()
+        public void OnCreate(World world) {
+            _query = world.GetQuery()
                 .With<TweenProgress>()
                 .With<Duration>()
                 .With<Target>()
@@ -79,8 +79,12 @@ namespace Wargon.Ecsape.Tween {
         private IPool<TweenProgress> progresses;
         private IPool<Target> targets;
 
-        public void OnCreate(World worldSource) {
-            _query = worldSource.GetQuery(typeof(TweenProgress), typeof(Duration), typeof(TweenLoop), typeof(Target))
+        public void OnCreate(World world) {
+            _query = world.GetQuery()
+                .With<Duration>()
+                .With<TweenLoop>()
+                .With<TweenProgress>()
+                .With<Target>()
                 .Without<Delay>();
         }
 
@@ -125,8 +129,8 @@ namespace Wargon.Ecsape.Tween {
         private IPool<Delay> delays;
         private IPool<TweenProgress> tweenProgress;
 
-        public void OnCreate(World worldSource) {
-            _query = worldSource.GetQuery(typeof(Delay), typeof(TweenProgress));
+        public void OnCreate(World world) {
+            _query = world.GetQuery(typeof(Delay), typeof(TweenProgress));
         }
 
         public void OnUpdate(float deltaTime) {
@@ -148,8 +152,8 @@ namespace Wargon.Ecsape.Tween {
         private IPool<Easing> easings;
         private IPool<TweenProgress> progresses;
 
-        public void OnCreate(World worldSource) {
-            _query = worldSource.GetQuery()
+        public void OnCreate(World world) {
+            _query = world.GetQuery()
                 .With<TweenProgress>()
                 .With<Easing>()
                 .Without<Delay>();
@@ -173,13 +177,17 @@ namespace Wargon.Ecsape.Tween {
 
     internal struct OnTweenComplete : IComponent { }
 
+    internal struct OnTweenCopleteEntityAction : IComponent {
+        public EntityAction action;
+    }
+
     internal sealed class StartNextTweenSystem : ISystem {
         private Query _query;
         private IPool<DestroyEntity> destoyedEntity;
         private IPool<NextTween> nextTweens;
 
-        public void OnCreate(World worldSource) {
-            _query = worldSource.GetQuery().With<NextTween>().With<DestroyEntity>();
+        public void OnCreate(World world) {
+            _query = world.GetQuery().With<NextTween>().With<DestroyEntity>();
         }
 
         public void OnUpdate(float deltaTime) {
@@ -192,18 +200,18 @@ namespace Wargon.Ecsape.Tween {
     }
 
     internal sealed class ClearTransformsEntitySystem : ISystem {
-        private Query _query;
+        private Query query;
         private IPool<TransformUnityTweenTag> callbacks;
         private IPool<TweenProgress> progresses;
         private IPool<Target> targets;
 
-        public void OnCreate(World worldSource) {
-            _query = worldSource.GetQuery().With<DestroyEntity>().With<TransformUnityTweenTag>().With<Target>();
+        public void OnCreate(World world) {
+            query = world.GetQuery().With<DestroyEntity>().With<TransformUnityTweenTag>().With<Target>();
         }
 
         public void OnUpdate(float deltaTime) {
-            if (_query.IsEmpty) return;
-            foreach (ref var entity in _query) {
+            if (query.IsEmpty) return;
+            foreach (ref var entity in query) {
                 ref var target = ref targets.Get(ref entity);
                 ref var progress = ref progresses.Get(ref entity);
                 if (!progress.targetDestroyed) {
@@ -219,12 +227,28 @@ namespace Wargon.Ecsape.Tween {
         }
     }
 
+    internal sealed class EntityCallbackTweenSystem : ISystem {
+        private Query query;
+        private IPool<OnTweenCopleteEntityAction> pool;
+        private IPool<Target> targets;
+        public void OnCreate(World world) {
+            query = world.GetQuery().With<DestroyEntity>().With<OnTweenCopleteEntityAction>().With<Target>();
+        }
+
+        public void OnUpdate(float deltaTime) {
+            foreach (ref var entity in query) {
+                ref var action = ref pool.Get(ref entity);
+                ref var target = ref targets.Get(ref entity);
+                action.action.Invoke(target.entity);
+            }
+        }
+    }
     internal sealed class CallbackTweenSystem : ISystem {
         private static readonly Dictionary<int, Action> callbacksMap = new();
         private Query query;
 
-        public void OnCreate(World worldSource) {
-            query = worldSource.GetQuery().With<DestroyEntity>().With<OnTweenComplete>();
+        public void OnCreate(World world) {
+            query = world.GetQuery().With<DestroyEntity>().With<OnTweenComplete>();
         }
 
         public void OnUpdate(float deltaTime) {
@@ -253,10 +277,9 @@ namespace Wargon.Ecsape.Tween {
 
     internal struct TransformUnityTweenTag : IComponent { }
 
-    internal struct TransformReferenceTween : IComponent, IDisposable {
+    internal struct TransformReferenceTween : IComponent {
         public Transform value;
         public int instanceID;
-        public void Dispose() { }
     }
 
     internal struct TweeningObject : IComponent {
@@ -266,13 +289,13 @@ namespace Wargon.Ecsape.Tween {
     internal struct BlockedTween : IComponent { }
 
     internal sealed class ScaleTranslationTweenSystem : ISystem {
-        private Query _query;
+        private Query query;
         private IPool<TweenProgress> progresses;
         private IPool<TranslationTween> scaleTweens;
         private IPool<Target> targets;
 
-        public void OnCreate(World worldSource) {
-            _query = worldSource.GetQuery()
+        public void OnCreate(World world) {
+            query = world.GetQuery()
                 .With<TweenProgress>()
                 .With<Target>()
                 .With<TranslationTween>()
@@ -280,8 +303,8 @@ namespace Wargon.Ecsape.Tween {
         }
 
         public void OnUpdate(float deltaTime) {
-            if (_query.IsEmpty) return;
-            foreach (ref var entity in _query) {
+            if (query.IsEmpty) return;
+            foreach (ref var entity in query) {
                 ref var progress = ref progresses.Get(ref entity);
                 if (progress.targetDestroyed) return;
 
@@ -299,13 +322,13 @@ namespace Wargon.Ecsape.Tween {
     }
 
     internal sealed class RotationTranslationTweenSystem : ISystem {
-        private Query _query;
+        private Query query;
         private IPool<TweenProgress> progresses;
         private IPool<TranslationRotationTween> scaleTweens;
         private IPool<Target> targets;
 
-        public void OnCreate(World worldSource) {
-            _query = worldSource.GetQuery()
+        public void OnCreate(World world) {
+            query = world.GetQuery()
                 .With<TweenProgress>()
                 .With<Target>()
                 .With<TranslationRotationTween>()
@@ -313,8 +336,8 @@ namespace Wargon.Ecsape.Tween {
         }
 
         public void OnUpdate(float deltaTime) {
-            if (_query.IsEmpty) return;
-            foreach (ref var entity in _query) {
+            if (query.IsEmpty) return;
+            foreach (ref var entity in query) {
                 ref var progress = ref progresses.Get(ref entity);
                 if (progress.targetDestroyed) return;
 
@@ -333,13 +356,13 @@ namespace Wargon.Ecsape.Tween {
     }
 
     internal sealed class MoveTranslationTweenSystem : ISystem {
-        private Query _query;
+        private Query query;
         private IPool<TweenProgress> progresses;
         private IPool<TranslationMoveTween> scaleTweens;
         private IPool<Target> targets;
 
-        public void OnCreate(World worldSource) {
-            _query = worldSource.GetQuery()
+        public void OnCreate(World world) {
+            query = world.GetQuery()
                 .With<TweenProgress>()
                 .With<Target>()
                 .With<TranslationMoveTween>()
@@ -347,8 +370,8 @@ namespace Wargon.Ecsape.Tween {
         }
 
         public void OnUpdate(float deltaTime) {
-            if (_query.IsEmpty) return;
-            foreach (ref var entity in _query) {
+            if (query.IsEmpty) return;
+            foreach (ref var entity in query) {
                 ref var progress = ref progresses.Get(ref entity);
                 if (progress.targetDestroyed) return;
 
@@ -367,18 +390,18 @@ namespace Wargon.Ecsape.Tween {
     }
 
     internal sealed class PauseTweenSystem : ISystem {
-        private Query _query;
+        private Query query;
         private IPool<PauseTween> pool;
         private IPool<TweenProgress> progresses;
 
-        public void OnCreate(World worldSource) {
-            _query = worldSource.GetQuery().With<PauseTween>().With<TweenProgress>();
-            pool = worldSource.GetPool<PauseTween>();
-            progresses = worldSource.GetPool<TweenProgress>();
+        public void OnCreate(World world) {
+            query = world.GetQuery().With<PauseTween>().With<TweenProgress>();
+            pool = world.GetPool<PauseTween>();
+            progresses = world.GetPool<TweenProgress>();
         }
 
         public void OnUpdate(float deltaTime) {
-            foreach (ref var entity in _query) {
+            foreach (ref var entity in query) {
                 ref var progress = ref progresses.Get(ref entity);
                 ref var pause = ref pool.Get(ref entity);
 
@@ -391,20 +414,20 @@ namespace Wargon.Ecsape.Tween {
     }
 
     internal sealed class SyncTransformsTweenSystem : ISystem {
-        private Query _query;
+        private Query query;
         private IPool<TransformReferenceTween> transforms;
         private IPool<Translation> translations;
 
-        public void OnCreate(World worldSource) {
-            _query = worldSource.GetQuery()
+        public void OnCreate(World world) {
+            query = world.GetQuery()
                 .With<Translation>()
                 .With<TransformReferenceTween>()
                 .Without<StaticTag>();
         }
 
         public void OnUpdate(float deltaTime) {
-            if (_query.IsEmpty) return;
-            foreach (var entity in _query) {
+            if (query.IsEmpty) return;
+            foreach (var entity in query) {
                 ref var transform = ref transforms.Get(entity.Index);
                 ref var translation = ref translations.Get(entity.Index);
                 transform.value.position = translation.position;
@@ -426,6 +449,7 @@ namespace Wargon.Ecsape.Tween {
                 .Add<RotationTranslationTweenSystem>()
                 .Add<MoveTranslationTweenSystem>()
                 .Add<StartNextTweenSystem>()
+                .Add<EntityCallbackTweenSystem>()
                 .Add<CallbackTweenSystem>()
                 .Add<ClearTransformsEntitySystem>()
                 ;

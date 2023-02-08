@@ -8,5 +8,5 @@ public class InputDataLink : ComponentLink<InputData> {
 public struct InputData : IComponent {
     public float horizontal;
     public float vertical;
-    public bool r;
+    public bool fire;
 }
