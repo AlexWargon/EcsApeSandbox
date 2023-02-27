@@ -254,7 +254,7 @@ namespace Wargon.Ecsape.Tween {
         public void OnUpdate(float deltaTime) {
             if (query.IsEmpty) return;
             foreach (ref var entity in query) {
-                callbacksMap[entity.Index].Invoke();
+                callbacksMap[entity.Index]?.Invoke();
                 callbacksMap[entity.Index] = null;
                 callbacksMap.Remove(entity.Index);
             }

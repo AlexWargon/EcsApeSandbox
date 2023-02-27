@@ -11,10 +11,6 @@ GameObject:
   - component: {fileID: 5332769926329804521}
   - component: {fileID: 5332769926329804526}
   - component: {fileID: 5332769926329804527}
-  - component: {fileID: 5332769926329804524}
-  - component: {fileID: 5332769926329804525}
-  - component: {fileID: 4834195788717173045}
-  - component: {fileID: 4397379935625463048}
   - component: {fileID: -345270495133257014}
   - component: {fileID: 7202338703021026090}
   - component: {fileID: 7733596960033156470}
@@ -104,70 +100,33 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cf53ee0725484164a8df7b44297c86a4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  linked: 0
   option: 2
---- !u!114 &5332769926329804524
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5332769926329804514}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 43be687ba8774501978c76811fc5bd22, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  value:
-    value: {fileID: 5332769926329804526}
---- !u!114 &5332769926329804525
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5332769926329804514}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c747af29b68046c998d180c901366f75, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  value:
-    AnimationList: {fileID: 11400000, guid: 5bca2cddb839e0e44af1ba26f4a10ccb, type: 2}
-    currentState: 0
-    nextState: 0
-    frame: 0
-    times: 0
---- !u!114 &4834195788717173045
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5332769926329804514}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0d144562b0044f2594acefd8b33c6c12, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  value:
-    value: {fileID: 5332769926329804521}
-    instanceID: 0
---- !u!114 &4397379935625463048
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5332769926329804514}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d928ebb825194315b079698d0384fec1, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  value:
-    horizontal: 0
-    vertical: 0
-    r: 0
+  Components:
+  - rid: 4852931255200120874
+  - rid: 4852931255200120875
+  - rid: 4852931255200120876
+  references:
+    version: 2
+    RefIds:
+    - rid: 4852931255200120874
+      type: {class: SpriteRender, ns: Animation2D, asm: Animation2D}
+      data:
+        value: {fileID: 5332769926329804526}
+    - rid: 4852931255200120875
+      type: {class: SpriteAnimation, ns: Animation2D, asm: Animation2D}
+      data:
+        AnimationList: {fileID: 11400000, guid: 5bca2cddb839e0e44af1ba26f4a10ccb, type: 2}
+        currentState: currentState
+        nextState: nextState
+        frame: 0
+        times: 0
+    - rid: 4852931255200120876
+      type: {class: InputData, ns: , asm: Game}
+      data:
+        horizontal: 0
+        vertical: 0
+        fire: 0
 --- !u!50 &-345270495133257014
 Rigidbody2D:
   serializedVersion: 4

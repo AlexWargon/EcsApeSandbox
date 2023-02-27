@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &1511958850691243340
+--- !u!1 &3433899424964687013
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -8,23 +8,23 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 1511958850691243337}
-  - component: {fileID: 1511958850691243336}
-  - component: {fileID: 7954807346698540449}
+  - component: {fileID: 3433899424964687008}
+  - component: {fileID: 3433899424964687009}
+  - component: {fileID: 6140940561544641608}
   m_Layer: 8
-  m_Name: Projectile_1
+  m_Name: Flash_1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &1511958850691243337
+--- !u!4 &3433899424964687008
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1511958850691243340}
+  m_GameObject: {fileID: 3433899424964687013}
   m_LocalRotation: {x: 0, y: 0, z: 0.7071068, w: 0.7071068}
   m_LocalPosition: {x: 0, y: 0.662, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
@@ -33,13 +33,13 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 90}
---- !u!212 &1511958850691243336
+--- !u!212 &3433899424964687009
 SpriteRenderer:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1511958850691243340}
+  m_GameObject: {fileID: 3433899424964687013}
   m_Enabled: 1
   m_CastShadows: 0
   m_ReceiveShadows: 0
@@ -74,7 +74,7 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
-  m_Sprite: {fileID: -3187845154016545519, guid: 250f26d8f3dbee34faa6c9a66f5fd8b8, type: 3}
+  m_Sprite: {fileID: -1829972567977851800, guid: 250f26d8f3dbee34faa6c9a66f5fd8b8, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -85,13 +85,13 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
---- !u!114 &7954807346698540449
+--- !u!114 &6140940561544641608
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1511958850691243340}
+  m_GameObject: {fileID: 3433899424964687013}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: cf53ee0725484164a8df7b44297c86a4, type: 3}
@@ -99,20 +99,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   linked: 0
   option: 1
-  Components:
-  - rid: 4852931213783466073
-  - rid: 4852931213783466075
-  - rid: 4852931213783466076
+  Components: []
   references:
     version: 2
-    RefIds:
-    - rid: 4852931213783466073
-      type: {class: IsProjectile, ns: , asm: Game}
-    - rid: 4852931213783466075
-      type: {class: MoveSpeed, ns: , asm: Game}
-      data:
-        value: 32
-    - rid: 4852931213783466076
-      type: {class: Damage, ns: , asm: Game}
-      data:
-        value: 10
+    RefIds: []

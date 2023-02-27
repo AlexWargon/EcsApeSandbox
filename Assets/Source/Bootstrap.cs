@@ -17,6 +17,7 @@ public class Bootstrap : MonoBehaviour {
         
         DI.Register<IUIService>().From(uiService);
         DI.Register<AnimationsHolder>().From(AnimationsHolder);
-        DI.Register<IObjectPool>().From(new MyObjectPool());
+        DI.Register<IObjectPool>().From(new GameObjectPool());
+        
     }
 }

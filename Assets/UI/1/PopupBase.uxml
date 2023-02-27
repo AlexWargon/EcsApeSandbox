@@ -1,0 +1,7 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <PopupBase style="align-items: center; justify-content: center; flex-direction: column; flex-wrap: nowrap;">
+        <ui:VisualElement style="height: 205px; background-color: rgba(0, 0, 0, 0.38); min-width: auto; min-height: auto; max-height: none; max-width: none; width: 77%; justify-content: flex-start; align-items: center;">
+            <ui:Label text="Hello" display-tooltip-when-elided="true" name="TopText" style="-unity-text-align: upper-center; font-size: 32px; -unity-font-style: bold;" />
+        </ui:VisualElement>
+    </PopupBase>
+</ui:UXML>

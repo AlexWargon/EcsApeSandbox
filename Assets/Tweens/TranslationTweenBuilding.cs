@@ -135,7 +135,7 @@ namespace Wargon.Ecsape.Tween {
             return builder;
         }
         
-        public static TweenBuilder doScale(this ref Entity entity, float start, float end, float duration) {
+        public static TweenBuilder doScale(this in Entity entity, float start, float end, float duration) {
             if (!entity.Has<Translation>()) return default;
 
             var builder = entity.AddTween(duration);

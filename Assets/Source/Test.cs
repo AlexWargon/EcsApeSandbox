@@ -1,16 +1,14 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using Animation2D;
 using UnityEngine;
 using Wargon.Ecsape;
-using Wargon.Ecsape.Components;
 using Wargon.Ecsape.Tween;
 using Wargon.UI;
-using Object = UnityEngine.Object;
 using Random = UnityEngine.Random;
 
 public class Test : WorldHolder {
-    public static int cubeID;
     [SerializeField] private int fps;
     [SerializeField] private Transform cube;
     private AnimationsHolder animationsHolder;
@@ -19,47 +17,35 @@ public class Test : WorldHolder {
     private IUIService uiService;
     private IObjectPool objectPool;
     private void Awake() {
-        World.ENTITIES_CACHE = 256;
+        World.ENTITIES_CACHE = 32;
         DI.Build(this);
-        
-        DI.Register<IEntityFabric>().From(new EntityFabric().Init(world));
-        
         Application.targetFrameRate = fps;
         animationsHolder.Init();
         world = World.GetOrCreate(World.DEFAULT);
-        (DI.Get<IObjectPool>() as MyObjectPool)?.SetWorld(world);
-        Fabric.Init(world);
+        var fabric = new EntityFabric().Init(world);
+        DI.Register<IEntityFabric>().From(fabric);
+        //(DI.Get<IObjectPool>() as MyObjectPool)?.SetWorld(world);
+
         systems = new Systems(world);
         systems
             .AddInjector(DI.GetOrCreateContainer())
+
             .Add(new ShmupGame())
             .Add(new Systems.Group("updates")
-                //.Add<TestSystem>()
-                //.Add<TestEntitySystem>()
-                //.Add<ChangeSpeedSystem>()
-                //.Add<ChangeSizeSystem>()
-                //.Add(new ShotSystem(cube))
                 .Add<ConvertEntitySystem>()
-                
-                //.Add<PlayerInputSystem>()
                 .Add<TestPlayerAnimationSystem>()
                 .Add<Animation2DSystem>()
                 .Add<TweensTestSystem>()
-
                 .Add<OnTriggerSystem>()
                 .Add<SyncTransformsSystem>()
-                //.Add<TestData1System>()
-                //.Add<TestFilterSystem1>()
-                //.Add<TestFilterSystem2>()
+                .Add<PoolObjectLifeTimeSystem>()
             )
-            
+            //.Add(new MassageSystem<DestroyObject>(x => Destroy(x.target)))            
             .Init();
 
         //SpawnCubes();
         //SpawnFilterTestEntities();
-
-        //world.EntityManager.Test(666);
-    }   
+    }
 
     private List<Transform> cubes = new List<Transform>();
     void SpawnCubes() {
@@ -85,28 +71,13 @@ public class Test : WorldHolder {
 
 }
 
-sealed class ShotSystem : ISystem {
-    private readonly GameObject bullet;
-    public ShotSystem(GameObject bullet) => this.bullet = bullet;
-    public void OnCreate(World world) {}
-    public void OnUpdate(float deltaTime) {
-        if (Input.GetKey(KeyCode.Space)) {
-            Fabric.Bullet(bullet,Vector3.zero, Quaternion.identity, 20f, Vector3.up);
-        }
+public class Chunk {
+    private readonly byte[] memory = new byte[1000];
+    public T Get<T>(int index) where T: struct{
+        return memory.Get<T>(index);
     }
-}
-
-public static class Fabric {
-    private static World world;
-    public static void Init(World world) => Fabric.world = world;
-    public static Entity Bullet(GameObject view, Vector3 pos, Quaternion rotation, float speed, Vector3 dir) {
-        var e = world.CreateEntity();
-        var go = Object.Instantiate(view, pos, rotation);
-        e.Get<TransformReference>().value = go.transform;
-        e.Add(new Translation{position = pos, rotation = rotation});
-        e.Get<MoveSpeed>().value = speed;
-        e.Get<MoveDirection>().value = dir;
-        return e;
+    public void Set<T>(T item, int index) where T : struct {
+        memory.Set(item, index);
     }
 }
 
@@ -124,6 +95,7 @@ public struct Health : IComponent {
     public int current;
     public int max;
 }
+
 [Serializable]
 public struct DamageEvent : IComponent {
     public int amount;
@@ -136,6 +108,9 @@ public struct Crit : IComponent{
     public float chance;
 }
 
+public struct Particle {
+    public ParticleSystem value;
+}
 sealed class SetCritDamageSystem : ISystem {
     private Query query;
     private IPool<Crit> crit;
@@ -160,7 +135,6 @@ sealed class SetCritDamageSystem : ISystem {
 }
 
 sealed class PlayerInputSystem : ISystem {
-
     private IPool<InputData> inputs;
     private Query query;
     public void OnCreate(World world) {
@@ -181,36 +155,25 @@ sealed class PlayerInputSystem : ISystem {
     }
 }
 
-struct TestEvent : IComponent { }
-sealed class TestEventReactSystem : ISystem {
-    private World world;
+sealed class MoveSystem : ISystem {
     private Query query;
+    private IPool<InputData> inputs;
+    private IPool<Translation> translations;
+    private IPool<MoveSpeed> moveSpeeds;
     public void OnCreate(World world) {
-        this.world = world;
-        query = this.world.GetQuery<TestEvent>();
+        query = world.GetQuery().With<InputData>().With<Translation>().With<MoveSpeed>();
     }
 
     public void OnUpdate(float deltaTime) {
-        foreach (var entity in query) {
-            //Debug.Log($"entity {entity.Index} triggered with {nameof(TestEvent)}");
+        foreach (ref var entity in query) {
+            ref var input = ref inputs.Get(ref entity);
+            ref var translation = ref translations.Get(ref entity);
+            ref var moveSpeed = ref moveSpeeds.Get(ref entity);
+
+            translation.position += new Vector3(input.horizontal, input.vertical) * deltaTime * moveSpeed.value;
         }
     }
 }
-sealed class TestEventSystem : ISystem, IEventSystem<TestEvent> {
-    private World world;
-    public void OnCreate(World world) {
-        this.world = world;
-    }
-
-    public void OnUpdate(float deltaTime) {
-        if (Input.GetKeyDown(KeyCode.E)) {
-            for (int i = 0; i < 10000; i++) {
-                world.CreateEntity().Add<TestEvent>();
-            }
-        }
-    }
-}
-
 sealed class TweensTestSystem : ISystem {
     private Query query;
     private IPool<Translation> translations;
@@ -241,8 +204,6 @@ sealed class TweensTestSystem : ISystem {
 }
 
 public struct BlockJump : IComponent{}
-
-
 
 sealed class TestPlayerAnimationSystem : ISystem {
     private IPool<SpriteAnimation> animations;
@@ -293,14 +254,40 @@ public struct Damage : IComponent {
 
 sealed class ShmupGame : Systems.Group {
     public ShmupGame() : base() {
-            Add<PlayerInputSystem>()
-            .Add<ShootProjectileSystem>()
+        Add<PlayerInputSystem>()
+            .Add<MoveSystem>()
+            .Add<BonusShotSystem>()
+            .Add<SpreadWeaponSystem>()
             .Add<ProjectileMoveSystem>()
             .Add<SetDamageSystem>()
             .Add<OnTakeDamageHitReactionSystem>()
             .Add<SetDamageToHealthSystem>()
             .Add<OnDeadSystem>()
-            .Add<PoolObjectLifeTimeSystem>();
+            ;
+
+    }
+}
+
+public struct BonusShot : IComponent {
+    public EntityLink prefab;
+}
+sealed class BonusShotSystem : ISystem {
+    private Query query;
+    private IEntityFabric _fabric;
+    private IPool<SpreadWeapon> weapons;
+    private IPool<BonusShot> bonusShots;
+    public void OnCreate(World world) {
+        query = world.GetQuery()
+            .With<SpreadWeapon>().With<ShotEvent>().With<BonusShot>();
+    }
+
+    public void OnUpdate(float deltaTime) {
+        
+        foreach (ref var entity in query) {
+            ref var weapon = ref weapons.Get(ref entity);
+            ref var shot = ref bonusShots.Get(ref entity);
+            _fabric.Instantiate(shot.prefab, weapon.firePoint.position, weapon.firePoint.rotation);
+        }
     }
 }
 sealed class ProjectileMoveSystem : ISystem {
@@ -311,9 +298,8 @@ sealed class ProjectileMoveSystem : ISystem {
     public void OnCreate(World world) {
         query = world.GetQuery()
             .With<IsProjectile>()
-            //.With<Direction>()
             .With<MoveSpeed>()
-            .With<Translation>().With<Active>();
+            .With<Translation>().With<Pooled>().Without<StaticTag>();
     }
 
     public void OnUpdate(float deltaTime) {
@@ -321,53 +307,56 @@ sealed class ProjectileMoveSystem : ISystem {
         foreach (ref var entity in query) {
             ref var translation = ref translations.Get(ref entity);
             ref var speed = ref speeds.Get(ref entity);
-            //ref var direction = ref directions.Get(ref entity);
 
-            translation.position += translation.rotation*Vector3.right * speed.value * deltaTime;
+            translation.position += translation.rotation * Vector3.right * speed.value * deltaTime;
         }
     }
 }
 
 sealed class SetDamageSystem : ISystem, IEventSystem<DamageEvent> {
     public void OnCreate(World world) {
-        query = world.GetQuery().With<CollidedWith>().With<Damage>().Without<Dead>();;
+        query = world.GetQuery().With<CollidedWith>().With<Pooled>().With<Damage>().Without<Dead>();;
     }
-
+    private Query query;
     private IPool<CollidedWith> collisions;
     private IPool<Damage> damages;
-    private Query query;
+    private IPool<Pooled> pooleds;
+    private IObjectPool pool;
     public void OnUpdate(float deltaTime) {
         foreach (ref var entity in query) {
             ref var collision = ref collisions.Get(ref entity);
             ref var damage = ref damages.Get(ref entity);
-            
-            collision.entity.Add(new DamageEvent {
-                from = entity,
-                to = collision.entity,
-                amount = damage.value
-            });
+            if (!collision.entity.IsNull()) {
+                collision.entity.Add(new DamageEvent {
+                    from = entity,
+                    to = collision.entity,
+                    amount = damage.value
+                });
+            }
+            ref var view = ref pooleds.Get(ref entity);
+            pool.Release(view.view, view.id);
         }
     }
 }
 
 sealed class OnTakeDamageHitReactionSystem : ISystem {
     public void OnCreate(World world) {
-        query = world.GetQuery().With<Translation>().With<DamageEvent>().Without<Dead>();;
+        query = world.GetQuery().With<Translation>().With<DamageEvent>().With<Health>().Without<Dead>();
     }
 
     private Query query;
     private IPool<Translation> translations;
     public void OnUpdate(float deltaTime) {
         foreach (ref var entity in query) {
-            ref var translation = ref translations.Get(ref entity);
-            entity.doScale(translation.scale, translation.scale * 0.8f, 0.2f)
-                .WithLoop(2, LoopType.Yoyo)
-                .WithEasing(Easings.EasingType.BounceEaseIn);
+            // entity.doScale(1,0.7f, 0.1f)
+            //     .WithLoop(2, LoopType.Yoyo)
+            //     .WithEasing(Easings.EasingType.BounceEaseIn);
+
         }
     }
 }
 public struct Dead : IComponent {}
-sealed class SetDamageToHealthSystem : ISystem {
+sealed class SetDamageToHealthSystem : ISystem, IEventSystem<Dead> {
     private Query query;
     private IPool<Health> healths;
     private IPool<DamageEvent> damageEvents;
@@ -381,7 +370,7 @@ sealed class SetDamageToHealthSystem : ISystem {
             ref var d = ref damageEvents.Get(ref entity);
             h.current -= d.amount;
             h.current = Mathf.Clamp(h.current,0, h.max);
-            if(h.current==0)
+            if(h.current<=0)
                 entity.Add<Dead>();
         }
     }
@@ -392,28 +381,78 @@ sealed class OnDeadSystem : ISystem {
         query = world.GetQuery().With<Dead>().With<Translation>();
     }
 
+    private World world;
     private Query query;
     public void OnUpdate(float deltaTime) {
-        foreach (ref Entity entity in query) {
-            entity.doScale(1f, 0.8f, 0.5f)
+        foreach (var entity in query) {
+            entity.doScale(2f, 0.8f, 0.2f)
                 .WithLoop(4, LoopType.Yoyo)
                 .WithEasing(Easings.EasingType.BounceEaseOut)
-                .OnComplete(e=>e.Destroy());
+                .OnComplete(() => {
+                    entity.Destroy();
+                    
+                });
+            Debug.Log("DEAD");
+            entity.Remove<Health>();
         }
     }
 }
-[Serializable]
 public struct SpreadWeapon : IComponent {
     public EntityLink projectile;
+    public EntityLink flash;
     public float delay;
     public float delayCounter;
     public float spread;
     public int count;
     public Transform firePoint;
 }
+public struct ShipWeapon : IComponent {
+    public EntityLink projectile;
+    public float delay;
+    public float delayCounter;
+    public float spread;
+    public int count;
+    public Transform[] firePoints;
+}
 
 public struct ShotEvent : IComponent { }
-sealed class ShootProjectileSystem : ISystem, IEventSystem<ShotEvent> {
+
+sealed class ShipWeaponSystem : ISystem {
+    private Query query;
+    private IPool<ShipWeapon> weapons;
+    private IPool<InputData> inputs;
+    private IEntityFabric fabric;
+    public void OnCreate(World world) {
+        query = world.GetQuery().With<ShipWeapon>().With<InputData>().Without<Dead>();
+    }
+
+    public void OnUpdate(float deltaTime) {
+
+        foreach (ref var entity in query) {
+            ref var weapon = ref weapons.Get(ref entity);
+            ref var input = ref inputs.Get(ref entity);
+
+            if (input.fire) {
+                
+                if (weapon.delayCounter > weapon.delay) {
+                    
+                    for (int i = 0; i < weapon.count; i++) {
+
+                        var z = weapon.firePoints[i].eulerAngles.z + Random.Range(-weapon.spread, weapon.spread);
+                        var rotation = Quaternion.Euler(0, 0,z);
+                        //Debug.Log(rotation.eulerAngles.z);
+                        fabric.Instantiate(weapon.projectile, weapon.firePoints[i].position, rotation);
+                        //b.Get<Direction>().value = rotation * Vector3.right;
+                    }
+                    weapon.delayCounter = 0;
+                    entity.Add<ShotEvent>();
+                }
+            }
+            weapon.delayCounter += deltaTime;
+        }
+    }
+}
+sealed class SpreadWeaponSystem : ISystem, IEventSystem<ShotEvent> {
     private Query query;
     private IPool<SpreadWeapon> weapons;
     private IPool<InputData> inputs;
@@ -432,20 +471,22 @@ sealed class ShootProjectileSystem : ISystem, IEventSystem<ShotEvent> {
                 
                 if (weapon.delayCounter > weapon.delay) {
                     
+                    fabric.Instantiate(weapon.flash, weapon.firePoint.position, weapon.firePoint.rotation);
                     for (int i = 0; i < weapon.count; i++) {
 
                         var z = weapon.firePoint.eulerAngles.z + Random.Range(-weapon.spread, weapon.spread);
                         var rotation = Quaternion.Euler(0, 0,z);
-                        Debug.Log(rotation.eulerAngles.z);
+                        //Debug.Log(rotation.eulerAngles.z);
                         fabric.Instantiate(weapon.projectile, weapon.firePoint.position, rotation);
                         //b.Get<Direction>().value = rotation * Vector3.right;
                     }
                     weapon.delayCounter = 0;
+                    entity.Add<ShotEvent>();
                 }
             }
 
             weapon.delayCounter += deltaTime;
-            entity.Add<ShotEvent>();
+            
         }
     }
 }
@@ -453,22 +494,26 @@ sealed class ShootProjectileSystem : ISystem, IEventSystem<ShotEvent> {
 sealed class PoolObjectLifeTimeSystem : ISystem {
     private IObjectPool pool;
     private Query query;
-    private IPool<Active> views;
+    private IPool<Pooled> views;
+    private World world;
     public void OnCreate(World world) {
-        query = world.GetQuery().With<Active>();
+        query = world.GetQuery().With<Pooled>().Without<StaticTag>();
+        this.world = world;
     }
-
+    
     public void OnUpdate(float deltaTime) {
         foreach (ref var entity in query) {
             ref var view = ref views.Get(ref entity);
             view.lifeTime -= deltaTime;
             if (view.lifeTime < 0) {
                 pool.Release(view.view, view.id);
-                entity.Remove<Active>();
+                
+                //world.CreateEntity().Add(new PoolCommandBack{obj = view.view, idOfPool = view.id});
             }
         }
     }
 }
+
 sealed class CharacterAnimationSystem : ISystem {
     private Query query;
     private IPool<SpriteAnimation> animtions;

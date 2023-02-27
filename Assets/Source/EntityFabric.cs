@@ -13,7 +13,7 @@ public sealed class EntityFabric : IEntityFabric {
     public Entity Instantiate(Transform view, Vector3 position, Quaternion rotation) {
         
         var go = pool.Spawn(view, position, rotation);
-        var e = world.CreateEntity(new TransformReference {value = go, instanceID = view.GetInstanceID()},
+        var e = world.CreateEntity(new TransformReference {value = go},
             new Translation {position = position, rotation = rotation, scale = go.localScale});
         return e;
     }
@@ -22,7 +22,7 @@ public sealed class EntityFabric : IEntityFabric {
         where TC1 : struct, IComponent {
         
         var go = pool.Spawn(view, position, rotation);
-        var e = world.CreateEntity(new TransformReference {value = go, instanceID = view.GetInstanceID()},
+        var e = world.CreateEntity(new TransformReference {value = go},
             new Translation {position = position, rotation = rotation, scale = go.localScale}, in component1);
         return e;
     }
@@ -32,7 +32,7 @@ public sealed class EntityFabric : IEntityFabric {
         where TC2 : struct, IComponent {
         
         var go = pool.Spawn(view, position, rotation);
-        var e = world.CreateEntity(new TransformReference {value = go, instanceID = view.GetInstanceID()},
+        var e = world.CreateEntity(new TransformReference {value = go},
             new Translation {position = position, rotation = rotation, scale = go.localScale}, in component1, in component2);
         return e;
     }
@@ -44,14 +44,17 @@ public sealed class EntityFabric : IEntityFabric {
         where TC3 : struct, IComponent {
         
         var go = pool.Spawn(view, position, rotation);
-        var e = world.CreateEntity(new TransformReference {value = go, instanceID = view.GetInstanceID()},
+        var e = world.CreateEntity(new TransformReference {value = go},
             new Translation {position = position, rotation = rotation, scale = go.localScale}, in component1, in component2, in component3);
         return e;
     }
 
     public Entity Instantiate(EntityLink view, Vector3 position, Quaternion rotation) {
         var go = pool.Spawn(view, position, rotation);
-        return go.Entity;
+        //go.Entity.Get<Translation>().rotation = rotation;
+        // return go.Entity;
+        //world.CreateEntity().Add(new PoolCommandSpawn{Prefab = view, position = position, rotation = rotation});
+        return go.Entity; 
     }
 
     public Entity Instantiate<TC1>(EntityLink view, Vector3 position, Quaternion rotation, TC1 component1) 
@@ -69,7 +72,7 @@ public sealed class EntityFabric : IEntityFabric {
         where TC2 : struct, IComponent {
         
         var go = pool.Spawn(view, position, rotation);
-        var e = world.CreateEntity(new TransformReference {value = go.transform, instanceID = view.GetInstanceID()},
+        var e = world.CreateEntity(new TransformReference {value = go.transform},
             new Translation {position = position, rotation = rotation, scale = go.transform.localScale}, in component1, in component2);
         return e;
     }
@@ -81,7 +84,7 @@ public sealed class EntityFabric : IEntityFabric {
         where TC3 : struct, IComponent {
         
         var go = pool.Spawn(view, position, rotation);
-        var e = world.CreateEntity(new TransformReference {value = go.transform, instanceID = view.GetInstanceID()},
+        var e = world.CreateEntity(new TransformReference {value = go.transform},
             new Translation {position = position, rotation = rotation, scale = go.transform.localScale}, in component1, in component2, in component3);
         return e;
     }
