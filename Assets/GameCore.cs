@@ -29,11 +29,7 @@ public class GameCore : WorldHolder
 
 struct OnHitAbility : IComponent { }
 struct ModList : IComponent {
-    public List<Entity> value;
-}
-
-struct Owner : IComponent {
-    public Entity Entity;
+    public List<Entity> ModEntities;
 }
 
 struct OnHitEvent : IComponent {
@@ -49,8 +45,8 @@ sealed class TriggerModsSystem : ISystem {
     public void OnUpdate(float deltaTime) {
         foreach (ref var entity in Query) {
             ref var mod = ref mods.Get(ref entity);
-            for (var i = 0; i < mod.value.Count; i++) {
-                mod.value[i].Add<ShotEvent>();
+            for (var i = 0; i < mod.ModEntities.Count; i++) {
+                mod.ModEntities[i].Add<ShotEvent>();
             }
         }
     }
