@@ -3,7 +3,7 @@ using UnityEngine;
 using Wargon.Ecsape;
 using Wargon.UI;
 
-[DefaultExecutionOrder(-25)]
+[DefaultExecutionOrder(ExecutionOrder.Bootstrap)]
 public class Bootstrap : MonoBehaviour {
     public UIRoot _root;
     public AnimationsHolder AnimationsHolder;
@@ -20,4 +20,9 @@ public class Bootstrap : MonoBehaviour {
         DI.Register<IObjectPool>().From(new GameObjectPool());
         
     }
+}
+
+public static class ExecutionOrder {
+    public const int Bootstrap = -25;
+    public const int EcsMain = -24;
 }

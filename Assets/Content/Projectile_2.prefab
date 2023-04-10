@@ -100,14 +100,26 @@ MonoBehaviour:
   linked: 0
   option: 1
   Components:
-  - rid: 4852931213783466073
   - rid: 4852931213783466075
   - rid: 4852931213783466076
+  - rid: 869682446236385282
+  - rid: 869682479522119683
   references:
     version: 2
     RefIds:
-    - rid: 4852931213783466073
+    - rid: 869682446236385282
+      type: {class: Pooled, ns: Wargon.Ecsape, asm: Ecsape}
+      data:
+        id: 0
+        view: {fileID: 1342913914415808165}
+        lifeTime: 0
+        lifeTimeDefault: 2
+    - rid: 869682479522119683
       type: {class: IsProjectile, ns: , asm: Game}
+      data:
+        Mask:
+          serializedVersion: 2
+          m_Bits: 0
     - rid: 4852931213783466075
       type: {class: MoveSpeed, ns: , asm: Game}
       data:

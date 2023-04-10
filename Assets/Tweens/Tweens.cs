@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Unity.Jobs;
 using UnityEngine;
 
 namespace Wargon.Ecsape.Tween {
@@ -358,9 +359,9 @@ namespace Wargon.Ecsape.Tween {
     internal sealed class MoveTranslationTweenSystem : ISystem {
         private Query query;
         private IPool<TweenProgress> progresses;
-        private IPool<TranslationMoveTween> scaleTweens;
+        private IPool<TranslationMoveTween> moveTweens;
         private IPool<Target> targets;
-
+        private IPool<Translation> translations;
         public void OnCreate(World world) {
             query = world.GetQuery()
                 .With<TweenProgress>()
@@ -374,12 +375,41 @@ namespace Wargon.Ecsape.Tween {
             foreach (ref var entity in query) {
                 ref var progress = ref progresses.Get(ref entity);
                 if (progress.targetDestroyed) return;
-
+            
                 ref var targetEntity = ref targets.Get(ref entity).entity;
                 ref var translation = ref targetEntity.Get<Translation>();
-                ref var scaleTween = ref scaleTweens.Get(ref entity);
+                ref var moveTween = ref moveTweens.Get(ref entity);
                 translation.position =
-                    Vector3.Lerp(scaleTween.startValue, scaleTween.endValue, progress.normalizedTime);
+                    Vector3.Lerp(moveTween.startValue, moveTween.endValue, progress.normalizedTime);
+            }
+
+            // var tweenJob = new MoveTweenJob{
+            //     Query = query.AsNative(),
+            //     progresses = progresses.AsNative(),
+            //     moveTweens = moveTweens.AsNative(),
+            //     targets = targets.AsNative(),
+            //     translations = translations.AsNative(),
+            // };
+            // var handle =  tweenJob.Schedule(query.Count, 64);
+            // handle.Complete();
+        }
+        
+        private struct MoveTweenJob : IJobParallelFor {
+            public NativeQuery Query;
+            public NativePool<TweenProgress> progresses;
+            public NativePool<TranslationMoveTween> moveTweens;
+            public NativePool<Target> targets;
+            public NativePool<Translation> translations;
+            public void Execute(int index) {
+                var e = Query.Entity(index);
+                
+                ref var progress = ref progresses.Get(e);
+                if (progress.targetDestroyed) return;
+                ref var targetEntity = ref targets.Get(e).entity;
+                ref var translation = ref translations.Get(targetEntity.Index);
+                ref var moveTween = ref moveTweens.Get(e);
+                translation.position =
+                    Vector3.Lerp(moveTween.startValue, moveTween.endValue, progress.normalizedTime);
             }
         }
     }

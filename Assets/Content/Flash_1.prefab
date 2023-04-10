@@ -73,7 +73,7 @@ SpriteRenderer:
   m_LightmapParameters: {fileID: 0}
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 0
+  m_SortingOrder: 4
   m_Sprite: {fileID: -1829972567977851800, guid: 250f26d8f3dbee34faa6c9a66f5fd8b8, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
@@ -99,7 +99,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   linked: 0
   option: 1
-  Components: []
+  Components:
+  - rid: 869682446236385280
   references:
     version: 2
-    RefIds: []
+    RefIds:
+    - rid: 869682446236385280
+      type: {class: Pooled, ns: Wargon.Ecsape, asm: Ecsape}
+      data:
+        id: 0
+        view: {fileID: 6140940561544641608}
+        lifeTime: 0
+        lifeTimeDefault: 0.1

@@ -254,13 +254,13 @@ MonoBehaviour:
         flash: {fileID: 6140940561544641608, guid: 1190bc7036cb4894ea4b787c9f45c604, type: 3}
         delay: 0.1
         delayCounter: 0.1
-        spread: 6
-        count: 3
+        spread: 24
+        count: 5
         firePoint: {fileID: 1983359602}
     - rid: 4852931260923248640
       type: {class: MoveSpeed, ns: , asm: Game}
       data:
-        value: 12
+        value: 14
     - rid: 4852931264737705984
       type: {class: BonusShot, ns: , asm: Game}
       data:
@@ -6231,7 +6231,7 @@ ParticleSystem:
     rateOverDistance:
       serializedVersion: 2
       minMaxState: 0
-      scalar: 3
+      scalar: 2
       minScalar: 0
       maxCurve:
         serializedVersion: 2
@@ -6617,7 +6617,7 @@ ParticleSystem:
         m_RotationOrder: 4
     separateAxes: 0
   ColorModule:
-    enabled: 0
+    enabled: 1
     gradient:
       serializedVersion: 2
       minMaxState: 1
@@ -6626,15 +6626,15 @@ ParticleSystem:
       maxGradient:
         serializedVersion: 2
         key0: {r: 1, g: 1, b: 1, a: 1}
-        key1: {r: 0, g: 1, b: 0.5466392, a: 1}
-        key2: {r: 0.68179417, g: 1, b: 0, a: 0}
+        key1: {r: 1, g: 1, b: 1, a: 0}
+        key2: {r: 0.68179417, g: 1, b: 0, a: 1}
         key3: {r: 0, g: 0, b: 0, a: 0}
         key4: {r: 0, g: 0, b: 0, a: 0}
         key5: {r: 0, g: 0, b: 0, a: 0}
         key6: {r: 0, g: 0, b: 0, a: 0}
         key7: {r: 0, g: 0, b: 0, a: 0}
-        ctime0: 16384
-        ctime1: 20817
+        ctime0: 0
+        ctime1: 65535
         ctime2: 65535
         ctime3: 0
         ctime4: 0
@@ -6642,7 +6642,7 @@ ParticleSystem:
         ctime6: 0
         ctime7: 0
         atime0: 0
-        atime1: 26600
+        atime1: 65535
         atime2: 65535
         atime3: 65535
         atime4: 0
@@ -6650,8 +6650,8 @@ ParticleSystem:
         atime6: 0
         atime7: 0
         m_Mode: 0
-        m_NumColorKeys: 3
-        m_NumAlphaKeys: 3
+        m_NumColorKeys: 2
+        m_NumAlphaKeys: 2
       minGradient:
         serializedVersion: 2
         key0: {r: 1, g: 1, b: 1, a: 1}
@@ -10332,7 +10332,6 @@ GameObject:
   m_Component:
   - component: {fileID: 977346558}
   - component: {fileID: 977346559}
-  - component: {fileID: 977346560}
   m_Layer: 0
   m_Name: '[TweensWorld]'
   m_TagString: Untagged
@@ -10369,19 +10368,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   entitiesCount: 0
   archetypesCount: 0
---- !u!114 &977346560
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 977346556}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b9b778eeac134ef4a90e426ef8b1b1f7, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  WorldHolder: {fileID: 977346559}
 --- !u!1 &1491912840
 GameObject:
   m_ObjectHideFlags: 0
@@ -10544,7 +10530,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1692174201}
   - component: {fileID: 1692174200}
-  - component: {fileID: 1692174202}
   m_Layer: 0
   m_Name: '[MainWorld]'
   m_TagString: Untagged
@@ -10567,7 +10552,7 @@ MonoBehaviour:
   entitiesCount: 0
   archetypesCount: 0
   fps: 60
-  cube: {fileID: 5332769926329804521, guid: e2ee1e80008025a4c85abbd9341f4a1c, type: 3}
+  cube: {fileID: 5299129750120262001, guid: 182187f7aa520fa4fbdc49f9ff6c78e2, type: 3}
 --- !u!4 &1692174201
 Transform:
   m_ObjectHideFlags: 0
@@ -10583,19 +10568,6 @@ Transform:
   m_Father: {fileID: 1681719860}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1692174202
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1692174199}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b9b778eeac134ef4a90e426ef8b1b1f7, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  WorldHolder: {fileID: 1692174200}
 --- !u!1 &1983359601
 GameObject:
   m_ObjectHideFlags: 0
@@ -15448,3 +15420,34 @@ ParticleSystem:
         m_PostInfinity: 2
         m_RotationOrder: 4
     vectorLabel1_3: W
+--- !u!1 &2094991750
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2094991752}
+  m_Layer: 0
+  m_Name: GameCore
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2094991752
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2094991750}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -5.734911, y: 10.433235, z: -0.044586897}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 7
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}

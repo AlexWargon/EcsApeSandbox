@@ -94,13 +94,9 @@ namespace Wargon.Ecsape.Tween {
             }
         }
         private static TweenBuilder AddTween(this in Entity entity, float duration) {
-
-            var tween = World.CreateEntity();
-            tween.Get<Duration>().value = duration;
-            tween.Get<Target>().entity = entity;
-            // tween.Add(new Duration{value = duration});
-            tween.Add<TweenProgress>();
-            // tween.Add(new Target{entity = entity});
+            var tween = World.CreateEntity(new Duration { value = duration },
+                new Target { entity = entity },
+                new TweenProgress());
             return new TweenBuilder(tween);
         }
 

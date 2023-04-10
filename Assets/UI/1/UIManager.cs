@@ -16,6 +16,6 @@ public class UIManager : MonoBehaviour {
     }
 
     private void OnDisable() {
-        root.Remove(baseRoot);   
+        root.Remove(baseRoot);
     }
 }
