@@ -111,9 +111,8 @@ MonoBehaviour:
       type: {class: Pooled, ns: Wargon.Ecsape, asm: Ecsape}
       data:
         id: 0
-        view: {fileID: 7954807346698540449}
         lifeTime: 0
-        lifeTimeDefault: 6.17
+        lifeTimeDefault: 1
     - rid: 869682479522119681
       type: {class: IsProjectile, ns: , asm: Game}
       data:

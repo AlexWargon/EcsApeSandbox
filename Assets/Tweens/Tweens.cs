@@ -401,7 +401,7 @@ namespace Wargon.Ecsape.Tween {
             public NativePool<Target> targets;
             public NativePool<Translation> translations;
             public void Execute(int index) {
-                var e = Query.Entity(index);
+                var e = Query.GetEntity(index);
                 
                 ref var progress = ref progresses.Get(e);
                 if (progress.targetDestroyed) return;

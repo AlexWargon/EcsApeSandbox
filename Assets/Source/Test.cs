@@ -81,12 +81,8 @@ sealed class ProjectileMoveSystem : ISystem {
     private static float dt;
     public void OnCreate(World world) {
         query = world.GetQuery()
-            .With<IsProjectile>()
-            .With<MoveSpeed>()
-            .With<Translation>()
-            .With<Pooled>()
+            .WithAll<IsProjectile, MoveSpeed, Translation, Pooled>()
             .Without<StaticTag>();
-        
     }
 
     public void OnUpdate(float deltaTime) {
@@ -102,19 +98,19 @@ sealed class ProjectileMoveSystem : ISystem {
             Query = query.AsNative(),
             deltaTime = deltaTime
         };
-        job.Complete(query.Count);
+        job.Schedule(query);
 
     }
 
     [BurstCompile]
     struct MoveJob : IJobParallelFor {
-        public NativeQuery Query { get; set; }
+        public NativeQuery Query;
         public NativePool<MoveSpeed> speeds;
         public NativePool<Translation> translations;
         public float deltaTime;
         public void Execute(int index) {
 
-            var e = Query.Entity(index);
+            var e = Query.GetEntity(index);
             ref var speed = ref speeds.Get(e);
             ref var translation = ref translations.Get(e);
             translation.position += translation.rotation * Vector3.right * speed.value * deltaTime;
@@ -199,11 +195,11 @@ sealed class PlayerInputSystem : ISystem {
     }
 }
 
-sealed class MoveSystem : ISystem {
-    private Query query;
-    private IPool<InputData> inputs;
-    private IPool<Translation> translations;
-    private IPool<MoveSpeed> moveSpeeds;
+class MoveSystem : ISystem {
+    Query query;
+    IPool<InputData> inputs;
+    IPool<Translation> translations;
+    IPool<MoveSpeed> moveSpeeds;
     public void OnCreate(World world) {
         query = world.GetQuery().With<InputData>().With<Translation>().With<MoveSpeed>();
         inputs = world.GetPool<InputData>();
@@ -331,12 +327,10 @@ sealed class BonusShotSystem : ISystem {
     private IPool<SpreadWeapon> weapons;
     private IPool<BonusShot> bonusShots;
     public void OnCreate(World world) {
-        query = world.GetQuery()
-            .With<SpreadWeapon>().With<ShotEvent>().With<BonusShot>();
+        query = world.GetQuery().WithAll<SpreadWeapon, ShotEvent, BonusShot>();
     }
 
     public void OnUpdate(float deltaTime) {
-        
         foreach (ref var entity in query) {
             ref var weapon = ref weapons.Get(ref entity);
             ref var shot = ref bonusShots.Get(ref entity);
@@ -374,15 +368,18 @@ sealed class ProjectileCollisionSystem : ISystem {
 
 
 sealed class SetDamageSystem : ISystem, IClearBeforeUpdate<DamageEvent> {
-    public void OnCreate(World world) {
-        query = world.GetQuery().With<CollidedWith>().With<Pooled>().With<Damage>().Without<Dead>();
-    }
+    
     private Query query;
     private IPool<CollidedWith> collisions;
     private IPool<Damage> damages;
     private IPool<Pooled> pooleds;
     private IPool<ViewLink> views;
     private IObjectPool pool;
+    
+    public void OnCreate(World world) {
+        query = world.GetQuery().With<CollidedWith>().With<Pooled>().With<Damage>().Without<Dead>();
+    }
+
     public void OnUpdate(float deltaTime) {
         foreach (ref var entity in query) {
             ref var collision = ref collisions.Get(ref entity);
@@ -483,7 +480,9 @@ sealed class SpreadWeaponSystem : ISystem, IClearBeforeUpdate<ShotEvent> {
     private IPool<InputData> inputs;
     private IEntityFabric fabric;
     public void OnCreate(World world) {
-        query = world.GetQuery().With<SpreadWeapon>().With<InputData>().Without<Dead>();
+        query = world.GetQuery()
+            .WithAll<SpreadWeapon,InputData>()
+            .Without<Dead>();
     }
 
     public void OnUpdate(float deltaTime) {
@@ -496,14 +495,14 @@ sealed class SpreadWeaponSystem : ISystem, IClearBeforeUpdate<ShotEvent> {
                 
                 if (weapon.delayCounter > weapon.delay) {
                     
-                    fabric.Instantiate(weapon.flash, weapon.firePoint.position, weapon.firePoint.rotation);
+                    var flash = fabric.Instantiate(weapon.flash, weapon.firePoint.position, weapon.firePoint.rotation);
+                    flash.Get<Translation>().scale = Extensions.Random(0.8f, 1.8f);
+                    flash.Get<Translation>().rotation = Extensions.RandomZ(0f, 90f);
                     for (int i = 0; i < weapon.count; i++) {
 
                         var z = weapon.firePoint.eulerAngles.z + Random.Range(-weapon.spread, weapon.spread);
                         var rotation = Quaternion.Euler(0, 0,z);
-                        //Debug.Log(rotation.eulerAngles.z);
                         fabric.Instantiate(weapon.projectile, weapon.firePoint.position, rotation);
-                        //b.Get<Direction>().value = rotation * Vector3.right;
                     }
                     weapon.delayCounter = 0;
                     entity.Add<ShotEvent>();
@@ -521,11 +520,11 @@ sealed class PoolObjectLifeTimeSystem : ISystem {
     private Query query;
     private IPool<Pooled> pooleds;
     private IPool<ViewLink> views;
-    private World world;
+    private World world; 
     private CommandBuffer cmd;
     public void OnCreate(World world) {
         query = world.GetQuery().With<Pooled>().Without<StaticTag>().Without<ReleaseEvent>();
-        cmd = world.GetBuffer();
+        cmd = world.GetCmdBuffer();
     }
     
     public void OnUpdate(float deltaTime) {
@@ -544,7 +543,8 @@ sealed class PoolObjectLifeTimeSystem : ISystem {
             Query = query.AsNative(),
             deltaTime = deltaTime,
         };
-        job.Schedule(query.Count, 64).Complete();
+        job.Schedule(query.Count, 64);
+        
     }
 
     struct PoolJob : IJobParallelFor {
@@ -553,11 +553,11 @@ sealed class PoolObjectLifeTimeSystem : ISystem {
         public NativeQuery Query;
         public float deltaTime;
         public void Execute(int index) {
-            var e = Query.Entity(index);
+            var e = Query.GetEntity(index);
             ref var view = ref pooleds.Get(e);
             view.lifeTime -= deltaTime;
             if (view.lifeTime < 0) {
-                cmd.Add<ReleaseEvent>(e);
+                cmd.Add(e, new ReleaseEvent());
             }
         }
     }
@@ -572,7 +572,10 @@ sealed class PoolObjectReleaseSystem : ISystem {
     private IPool<ViewLink> views;
     private Query query;
     public void OnCreate(World world) {
-        query = world.GetQuery().With<Pooled>().With<ReleaseEvent>().Without<StaticTag>();
+        query = world.GetQuery()
+            .With<Pooled>()
+            .With<ReleaseEvent>()
+            .Without<StaticTag>();
     }
     
     public void OnUpdate(float deltaTime) {

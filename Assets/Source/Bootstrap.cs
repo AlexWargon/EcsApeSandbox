@@ -1,4 +1,5 @@
-﻿using Animation2D;
+﻿using System.Collections;
+using Animation2D;
 using UnityEngine;
 using Wargon.Ecsape;
 using Wargon.UI;
@@ -17,7 +18,7 @@ public class Bootstrap : MonoBehaviour {
         
         DI.Register<IUIService>().From(uiService);
         DI.Register<AnimationsHolder>().From(AnimationsHolder);
-        DI.Register<IObjectPool>().From(new GameObjectPool());
+        DI.Register<IObjectPool>(new GameObjectPool());
         
     }
 }

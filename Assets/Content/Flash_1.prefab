@@ -108,6 +108,5 @@ MonoBehaviour:
       type: {class: Pooled, ns: Wargon.Ecsape, asm: Ecsape}
       data:
         id: 0
-        view: {fileID: 6140940561544641608}
         lifeTime: 0
-        lifeTimeDefault: 0.1
+        lifeTimeDefault: 0.07
