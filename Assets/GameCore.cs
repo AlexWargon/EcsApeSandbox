@@ -39,6 +39,10 @@ public struct OnHitEvent : IComponent {
     public Vector2 Position;
     public int Damage;
 }
+
+public struct OnTakeDamageEvent : IComponent {
+    
+}
 public struct OnDamageEvent : IComponent { }
 public struct OnCritEvent : IComponent { }
 public struct OnShotAbility : IComponent { }
@@ -47,27 +51,23 @@ public struct OnDamageAbility : IComponent { }
 public struct OnKillAbility : IComponent { }
 public struct OnCritAbility : IComponent { }
 public struct OnTriggerAbilityEvent : IComponent {}
-/// <summary>
-/// вешанье евента с оружия на абилки
-/// </summary>
+public struct OnTakeDamageAbility : IComponent{}
+
 sealed class PreTriggerAbilitiesListSystem : ISystem {
     private Query OnShotEvents;
     private Query OnHitEvents;
     private Query OnDamageEvents;
     private Query OnKillEvents;
     private Query OnCritEvents;
+    private Query OnTakeDamageEvents;
     private IPool<AbilityList> abilities;
     public void OnCreate(World world) {
-        OnShotEvents = world.GetQuery()
-            .WithAll<ShotEvent, AbilityList>();
-        OnHitEvents = world.GetQuery()
-            .WithAll<OnHitEvent, AbilityList>();
-        OnDamageEvents = world.GetQuery()
-            .WithAll<OnDamageEvent, AbilityList>();
-        OnKillEvents = world.GetQuery()
-            .WithAll<OnKillEvent, AbilityList>();
-        OnCritEvents = world.GetQuery()
-            .WithAll<OnCritEvent, AbilityList>();
+        OnShotEvents = world.GetQuery().WithAll<ShotEvent, AbilityList>();
+        OnHitEvents = world.GetQuery().WithAll<OnHitEvent, AbilityList>();
+        OnDamageEvents = world.GetQuery().WithAll<OnDamageEvent, AbilityList>();
+        OnKillEvents = world.GetQuery().WithAll<OnKillEvent, AbilityList>();
+        OnCritEvents = world.GetQuery().WithAll<OnCritEvent, AbilityList>();
+        OnTakeDamageEvents = world.GetQuery().WithAll<OnTakeDamageEvent, AbilityList>();
     }
     public void OnUpdate(float deltaTime) {
         if(!OnShotEvents.IsEmpty)
@@ -105,6 +105,13 @@ sealed class PreTriggerAbilitiesListSystem : ISystem {
                     mod.AbilityEntities[i].Add<OnCritEvent>();
                 }
             }
+        if(!OnTakeDamageEvents.IsEmpty)
+            foreach (ref var entity in OnTakeDamageEvents) {
+                ref var mod = ref abilities.Get(ref entity);
+                for (var i = 0; i < mod.AbilityEntities.Count; i++) {
+                    mod.AbilityEntities[i].Add<OnTakeDamageEvent>();
+                }
+            }
     }
 }
 /// <summary>
@@ -116,18 +123,22 @@ sealed class PreTriggerAbilitiesListSystem : ISystem {
 /// 
 /// </summary>
 sealed class TriggerAbilitiesSystem : ISystem, IClearBeforeUpdate<OnTriggerAbilityEvent> {
+    
     private Query onHitAbilitiesQuery;
     private Query onShotAbilitiesQuery;
     private Query onDamageAbilitiesQuery;
     private Query onKillAbilitiesQuery;
     private Query onCritAbilitiesQuery;
+    private Query onGetDamageAbilitiesQuery;
     public void OnCreate(World world) {
         onHitAbilitiesQuery = world.GetQuery().WithAll<OnHitAbility, OnHitEvent>();
         onShotAbilitiesQuery = world.GetQuery().WithAll<OnShotAbility, ShotEvent>();
         onDamageAbilitiesQuery = world.GetQuery().WithAll<OnDamageAbility, OnDamageEvent>();
         onKillAbilitiesQuery = world.GetQuery().WithAll<OnKillAbility, OnKillEvent>();
         onCritAbilitiesQuery = world.GetQuery().WithAll<OnCritAbility, OnCritEvent>();
+        onGetDamageAbilitiesQuery = world.GetQuery().WithAll<OnTakeDamageAbility, OnTakeDamageEvent>();
     }
+    
     public void OnUpdate(float deltaTime) {
         foreach (ref var entity in onHitAbilitiesQuery) {
             entity.Add<OnTriggerAbilityEvent>();
@@ -142,6 +153,9 @@ sealed class TriggerAbilitiesSystem : ISystem, IClearBeforeUpdate<OnTriggerAbili
             entity.Add<OnTriggerAbilityEvent>();
         }
         foreach (ref var entity in onCritAbilitiesQuery) {
+            entity.Add<OnTriggerAbilityEvent>();
+        }
+        foreach (ref var entity in onGetDamageAbilitiesQuery) {
             entity.Add<OnTriggerAbilityEvent>();
         }
     }

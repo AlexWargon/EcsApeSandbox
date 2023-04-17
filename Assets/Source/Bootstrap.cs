@@ -1,5 +1,4 @@
-﻿using System.Collections;
-using Animation2D;
+﻿using Animation2D;
 using UnityEngine;
 using Wargon.Ecsape;
 using Wargon.UI;

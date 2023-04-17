@@ -2,11 +2,9 @@ using System;
 using System.Collections.Generic;
 using Animation2D;
 using Unity.Burst;
-using Unity.Collections;
 using Unity.Jobs;
 using UnityEngine;
 using Wargon.Ecsape;
-using Wargon.Ecsape.Components;
 using Wargon.Ecsape.Tween;
 using Wargon.UI;
 using Random = UnityEngine.Random;
@@ -30,7 +28,6 @@ public class Test : WorldHolder {
         world = World.GetOrCreate();
         fabric = new EntityFabric().Init(world);
         DI.Register<IEntityFabric>().From(fabric);
-        //(DI.Get<IObjectPool>() as MyObjectPool)?.SetWorld(world);
 
         systems = new Systems(world);
         systems
@@ -55,6 +52,14 @@ public class Test : WorldHolder {
             //.Add(new MassageSystem<DestroyObject>(x => Destroy(x.target)))            
             .Init();
 
+        // unsafe {
+        //     var w = EcsUnsafe.world.create();
+        //     var e1 = w->create_entity();
+        //     var e2 = w->create_entity();
+        //     
+        //     Debug.Log(e1->index);
+        //     Debug.Log(e2->index);
+        // }
         //SpawnCubes();
         //SpawnFilterTestEntities();
     }
@@ -502,7 +507,8 @@ sealed class SpreadWeaponSystem : ISystem, IClearBeforeUpdate<ShotEvent> {
 
                         var z = weapon.firePoint.eulerAngles.z + Random.Range(-weapon.spread, weapon.spread);
                         var rotation = Quaternion.Euler(0, 0,z);
-                        fabric.Instantiate(weapon.projectile, weapon.firePoint.position, rotation);
+                        fabric.Instantiate(weapon.projectile, weapon.firePoint.position, rotation)
+                            .SetOwner(entity);
                     }
                     weapon.delayCounter = 0;
                     entity.Add<ShotEvent>();
@@ -594,7 +600,6 @@ sealed class CharacterAnimationSystem : ISystem {
     private IPool<Direction> directions;
     public void OnCreate(World world) {
         query = world.GetQuery().With<SpriteAnimation>().With<Translation>();
-        
     }
 
     public void OnUpdate(float deltaTime) {
@@ -606,12 +611,4 @@ sealed class CharacterAnimationSystem : ISystem {
             
         }
     }
-}
-
-public struct CubeMove : IComponent {
-
-    public float max;
-    public float min;
-    public float moveSpeed;
-    public bool moveUp;
 }
