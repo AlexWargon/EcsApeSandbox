@@ -56,17 +56,23 @@ namespace Animation2D {
         }
         
         public UnityEngine.Color color {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => value.color;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set => this.value.color = value;
         }
         
         public bool flipX {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => value.flipX;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set => this.value.flipX = value;
         }
 
         public bool flipY {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => value.flipY;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set => this.value.flipY = value;
         }
     }

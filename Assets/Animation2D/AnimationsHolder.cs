@@ -59,7 +59,7 @@ namespace Animation2D {
 #if UNITY_EDITOR
             File.WriteAllText(AssetDatabase.GetAssetPath(AnimationsConstFile), source);
 #endif
-            Debug.Log("Generated");
+            Debug.Log("[Animations const Re-Generated]");
 
         }
 

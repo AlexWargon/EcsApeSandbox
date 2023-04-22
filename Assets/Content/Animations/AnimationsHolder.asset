@@ -13,8 +13,7 @@ MonoBehaviour:
   m_Name: AnimationsHolder
   m_EditorClassIdentifier: 
   Animations:
-  - {fileID: 11400000, guid: 5bca2cddb839e0e44af1ba26f4a10ccb, type: 2}
-  - {fileID: 11400000, guid: a1b26ee8cdab2f946b0233dfc777e9e6, type: 2}
-  FrameTime: 0.08
+  - {fileID: 11400000, guid: cf1d0b268af6a43449b2d133dcfd6f89, type: 2}
+  FrameTime: 0.1
   AnimationsConstFile: {fileID: 11500000, guid: 19caaa028211e5b41babf418793b8ca2, type: 3}
-  ToGenerateCount: 108
+  names: []
