@@ -8,6 +8,7 @@ namespace Wargon.TinyEcs {
         public readonly int id;
         private readonly ArrayList<Query> queries;
         private readonly World world;
+        /// ebat' vlad sho eto
         private int _queriesCount;
 
         internal Archetype(World world) {

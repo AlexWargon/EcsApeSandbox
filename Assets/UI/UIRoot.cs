@@ -6,5 +6,6 @@ namespace Wargon.UI {
         public Transform MenuScreenRoot;
         public Transform PopupRoot;
         public CanvasGroup CanvasGroup;
+        public Canvas Canvas;
     }
 }

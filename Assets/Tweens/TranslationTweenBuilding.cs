@@ -2,8 +2,8 @@
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using UnityEngine;
+using Wargon.Ecsape.Components;
 
-// ReSharper disable once CheckNamespace
 namespace Wargon.Ecsape.Tween {
     public delegate void EntityAction(Entity entity);
 
@@ -143,7 +143,7 @@ namespace Wargon.Ecsape.Tween {
             return builder;
         }
         
-        public static TweenBuilder doScaleX(this ref Entity entity, float start, float end, float duration) {
+        public static TweenBuilder doScaleX(this in Entity entity, float start, float end, float duration) {
             if (!entity.Has<Translation>()) return default;
 
             var builder = entity.AddTween(duration);
@@ -156,7 +156,7 @@ namespace Wargon.Ecsape.Tween {
             return builder;
         }
 
-        public static TweenBuilder doScaleY(this ref Entity entity, float start, float end, float duration) {
+        public static TweenBuilder doScaleY(this in Entity entity, float start, float end, float duration) {
             if (!entity.Has<Translation>()) return default;
 
             var builder = entity.AddTween(duration);
@@ -169,7 +169,7 @@ namespace Wargon.Ecsape.Tween {
             return builder;
         }
         
-        public static TweenBuilder doScaleZ(this ref Entity entity, float start, float end, float duration) {
+        public static TweenBuilder doScaleZ(this in Entity entity, float start, float end, float duration) {
             if (!entity.Has<Translation>()) return default;
 
             var builder = entity.AddTween(duration);
@@ -313,6 +313,7 @@ namespace Wargon.Ecsape.Tween {
             if (transforms_entities_map.ContainsKey(transformId)) 
             {
                 entity = world.GetEntity(transforms_entities_map[transformId]);
+                if(transform.parent is not null) entity.Add(new ParentTransform{Transform = transform.parent});
                 ref var to = ref entity.Get<TweeningObject>();
                 to.tweensCount++;
             }
@@ -332,6 +333,7 @@ namespace Wargon.Ecsape.Tween {
                      rotation = transform.rotation,
                      position = transform.position
                 });
+                if(transform.parent is not null) entity.Add(new ParentTransform{Transform = transform.parent});
             }
 
             return entity;
@@ -342,13 +344,37 @@ namespace Wargon.Ecsape.Tween {
             var entity = TransformToEntity(transform);
             return entity.doScale(start, end, duration).Add(new TransformUnityTweenTag());
         }
-
+        // ReSharper disable Unity.PerformanceAnalysis
+        public static TweenBuilder doScaleX(this Transform transform, float start, float end, float duration) {
+            var entity = TransformToEntity(transform);
+            return entity.doScaleX(start, end, duration).Add(new TransformUnityTweenTag());
+        }
+        // ReSharper disable Unity.PerformanceAnalysis
+        public static TweenBuilder doScaleY(this Transform transform, float start, float end, float duration) {
+            var entity = TransformToEntity(transform);
+            return entity.doScaleY(start, end, duration).Add(new TransformUnityTweenTag());
+        }
+        // ReSharper disable Unity.PerformanceAnalysis
+        public static TweenBuilder doScaleZ(this Transform transform, float start, float end, float duration) {
+            var entity = TransformToEntity(transform);
+            
+            return entity.doScaleZ(start, end, duration).Add(new TransformUnityTweenTag());
+        }
         // ReSharper disable Unity.PerformanceAnalysis
         public static TweenBuilder doRotation(this Transform transform, Vector3 start, Vector3 end, float duration) {
             var entity = TransformToEntity(transform);
+            
             return entity.doRotation(start, end, duration).Add(new TransformUnityTweenTag());
         }
-        
+        // ReSharper disable Unity.PerformanceAnalysis
+        public static TweenBuilder doRotationZ(this Transform transform, float start, float end, float duration) {
+            var entity = TransformToEntity(transform);
+            var startRot = transform.rotation.eulerAngles;
+            startRot.z = start;
+            var endRot = startRot;
+            endRot.z = end;
+            return entity.doRotation(startRot, endRot, duration).Add(new TransformUnityTweenTag());
+        }
         // ReSharper disable Unity.PerformanceAnalysis
         public static TweenBuilder doMove(this Transform transform, Vector3 start, Vector3 end, float duration) {
             var entity = TransformToEntity(transform);

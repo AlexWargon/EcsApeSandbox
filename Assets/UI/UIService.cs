@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
+using Wargon.Ecsape;
 
 namespace Wargon.UI {
     public class UIService : IUIService {
@@ -18,23 +19,22 @@ namespace Wargon.UI {
         private readonly Dictionary<string, IUIElement> _elements;
         private readonly List<IUIElement> _activePopups;
         private readonly List<IUIElement> _activeMenus;
-
-        public UIService(UIFactory uiFactory, Transform menuScreensRoot, Transform popupsRoot, CanvasGroup canvasGroup) {
+        private IDependencyContainer _dependencyContainer;
+        public UIService(UIRoot uiRoot) {
             
             _elements = new ();
             _activePopups = new ();
             _activeMenus = new ();
-            
-            _uiFactory = uiFactory;
-            _menuScreensParent = menuScreensRoot;
-            _popupsParent = popupsRoot;
-            _canvasGroup = canvasGroup;
+            _uiFactory = new UIFactory(uiRoot._elementsList, uiRoot.Canvas, uiRoot.CanvasGroup);
+            _menuScreensParent = uiRoot.MenuScreenRoot;
+            _popupsParent = uiRoot.PopupRoot;
+            _canvasGroup = uiRoot.CanvasGroup;
         }
 
-        private T Spawn<T>() where T : class, IUIElement
+        public T Spawn<T>(bool active = true, bool hideOther = true) where T : class, IUIElement
         {
-            var element = Get<T>();
-            
+            var element = GetInternal<T>();
+            //if(!element.IsActive) element.SetActive(true);
             var isPopup = UIElementInfo<T>.IsPopup;
             var isMenu = UIElementInfo<T>.IsMenu;
             
@@ -48,31 +48,26 @@ namespace Wargon.UI {
                 isMenu ? _menuScreensParent : CurrentMenuScreen.Transform, 
                 false);
             element.Transform.SetAsLastSibling();
-
+            //Debug.Log($"{typeof(T).Name} is popop ? {isPopup}");
             if (isPopup) {
-                if (CurrentPopup != null)
+                if (CurrentPopup != null && hideOther)
                     CurrentPopup.Hide();
                 CurrentPopup = element;
             }
-
             if (isMenu) {
                 CurrentMenuScreen = element;
             }
-
+            element.SetActive(active);
             return element;
         }
         
-        public T Show<T>(Action onComplite = null) where T : class, IUIElement {
-            var element = Spawn<T>();
+        public T Show<T>(Action onComplite = null, bool hideOther = true) where T : class, IUIElement {
+            var element = Spawn<T>(true, hideOther);
             if (element.IsAnimating)
                 return element;
             _canvasGroup.interactable = false;
-            var key = typeof(T).Name;
-            if (!_elements.ContainsKey(key))
-            {
-                Debug.Log($"ADDED {typeof(T)}");
-                _elements.Add(key, element);
-            }
+
+            element.OnShow();
             element.SetActive(true);
             element.IsAnimating = true;
             element.PlayShowAnimation(() => {
@@ -94,10 +89,10 @@ namespace Wargon.UI {
 
         public void Hide<T>(Action onComplite = null) where T : class, IUIElement {
             var key = typeof(T).Name;
-            _canvasGroup.interactable = false;
             if (_elements.TryGetValue(key, out var element)) {
                 if(element.IsAnimating)
                     return;
+                _canvasGroup.interactable = false;
                 element.IsAnimating = true;
                 element.PlayHideAnimation(() => {
                     _canvasGroup.interactable = true;
@@ -109,15 +104,25 @@ namespace Wargon.UI {
             }
         }
 
-        private T Get<T>() where T :  class, IUIElement {
+        private T GetInternal<T>() where T :  class, IUIElement {
             var key = typeof(T).Name;
             if(_elements.ContainsKey(key))
                 return (T)_elements[key];
-            var newElement = _uiFactory.Create<T>();
+            var newElement = _uiFactory.Create<T>(_dependencyContainer);
             _elements.Add(key, newElement);
             return newElement;
         }
-
+        public T Get<T>(bool active = true) where T :  class, IUIElement {
+            var key = typeof(T).Name;
+            if (_elements.ContainsKey(key)) {
+                _elements[key].SetActive(active);
+                return (T)_elements[key];
+            }
+            var newElement = _uiFactory.Create<T>(_dependencyContainer);
+            _elements.Add(key, newElement);
+            newElement.SetActive(active);
+            return newElement;
+        }
         public void HideAllPopups() {
             foreach (var popup in _activePopups) {
                 popup.Hide();

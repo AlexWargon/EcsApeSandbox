@@ -4,9 +4,7 @@ using UnityEngine;
 using Wargon.Ecsape;
 
 namespace Animation2D {
-    public class SpriteAnimationLink : ComponentLink<SpriteAnimation> {
-        
-    }
+
     public partial struct AnimationState {
         public const int Idle = 0;
         

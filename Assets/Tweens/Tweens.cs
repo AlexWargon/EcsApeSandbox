@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Unity.Jobs;
 using UnityEngine;
+using Wargon.Ecsape.Components;
 
 namespace Wargon.Ecsape.Tween {
     internal struct Target : IComponent {
@@ -286,7 +287,6 @@ namespace Wargon.Ecsape.Tween {
     internal struct TweeningObject : IComponent {
         public int tweensCount;
     }
-
     internal struct BlockedTween : IComponent { }
 
     internal sealed class ScaleTranslationTweenSystem : ISystem {
@@ -468,6 +468,29 @@ namespace Wargon.Ecsape.Tween {
         }
     }
 
+    struct ParentTransform : IComponent {
+        public Transform Transform;
+    }
+    sealed class TransformMatrixSystem : ISystem {
+        private Query Query;
+        private IPool<Translation> translations;
+        private IPool<ParentTransform> owners;
+        public void OnCreate(World world) {
+            Query = world.GetQuery().WithAll<Translation, ParentTransform>();
+        }
+
+        public void OnUpdate(float deltaTime) {
+            foreach (ref var entity in Query) {
+                ref var eTransform = ref translations.Get(ref entity);
+                ref var ownerTransform = ref owners.Get(ref entity);
+                var posDif = ownerTransform.Transform.position - eTransform.position;
+                eTransform.position += posDif;
+                var rotDif = eTransform.rotation * Quaternion.Inverse(ownerTransform.Transform.rotation);
+                eTransform.rotation = rotDif * eTransform.rotation;
+            }
+        }
+    }
+
     public class TweenAnimation : Systems.Group {
         public TweenAnimation() : base("TweenSystems") {
                 Add<TweenDelaySystem>()
@@ -479,9 +502,11 @@ namespace Wargon.Ecsape.Tween {
                 .Add<RotationTranslationTweenSystem>()
                 .Add<MoveTranslationTweenSystem>()
                 .Add<StartNextTweenSystem>()
+                .Add<TransformMatrixSystem>()
                 .Add<EntityCallbackTweenSystem>()
                 .Add<CallbackTweenSystem>()
                 .Add<ClearTransformsEntitySystem>()
+                .Add<SyncTransformsTweenSystem>()
                 ;
         }
     }

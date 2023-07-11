@@ -5,16 +5,16 @@ namespace Wargon.Ecsape.Tween {
         private Systems systems;
         private void Awake() {
             world = World.GetOrCreate(World.TWEEN);
-            systems = new Systems(world);
-            systems
+
+            world
                 .AddGroup(new TweenAnimation())
-                .Add<SyncTransformsTweenSystem>()
+                //.Add<SyncTransformsTweenSystem>()
                 .Init();
             //_fixedSystems = new Systems(world).Add<SyncTransformsTweenSystem>().Init();
         }
 
         private void Update() {
-            systems.Update(Time.deltaTime);
+            world.OnUpdate(Time.unscaledDeltaTime);
         }
     }
 }

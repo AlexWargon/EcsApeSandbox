@@ -9,6 +9,7 @@ namespace Animation2D {
         }
     }
     public sealed class Animation2DSystem : ISystem {
+
         private float frameTime => AnimationsHolder.Instance.FrameTime;
         private float time;
         private Query _query;
