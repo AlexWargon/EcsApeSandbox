@@ -1,10 +1,14 @@
+using System;
 using System.Linq;
 using Animation2D;
+using Unity.Collections;
+using Unity.Jobs;
 using UnityEngine;
 using Wargon.Ecsape;
 using Wargon.Ecsape.Components;
 using Wargon.Ecsape.Tween;
 using Wargon.UI;
+using Object = UnityEngine.Object;
 using Random = UnityEngine.Random;
 
 namespace Rogue {
@@ -53,17 +57,18 @@ namespace Rogue {
                 .Add<Animation2DSystem>()
                 .Add<OnPlayerSpawnSystem>()
                 .Add<PoolObjectLifeTimeSystem>()
+                .Add<TotalLifeTimeSystem>()
                 //.Add<PoolObjectLifeTimeSystem2>()
                 .Add<OnTriggerSystem>()
                 .Add<DeathEventSystem>()
             .Init();
             uiService.Spawn<InventoryPopup>(false);
             //uiService.Spawn<RunesPopup>(false);
-
+            
         }
         void Update()
         {
-            if(Paused) return;
+            //if(Paused) return;
             world.OnUpdate(Time.deltaTime);
             
             
@@ -286,10 +291,13 @@ namespace Rogue {
                 
                 foreach (ref var player in players) {
                     ref var playerTranslation = ref player.Get<Translation>();
-                    var dir = playerTranslation.position - translation.position;
+                    var movementDirection = (playerTranslation.position - translation.position).normalized;
+                    
+                    if(movementDirection != Vector3.zero)
+                        translation.rotation = Quaternion.LookRotation (movementDirection);
                     var distance = Vector3.Distance(playerTranslation.position, translation.position);
                     if(distance > 1f)
-                        translation.position += dir.normalized * movespeed.value * deltaTime;
+                        translation.position += movementDirection * movespeed.value * deltaTime;
                     else {
                         translation.position = translation.position;
                     }
@@ -298,18 +306,17 @@ namespace Rogue {
         }
     }
 
-    
     sealed class HitBoxCollisionSystem : ISystem, IClearBeforeUpdate<TakeHitEvent>, IClearBeforeUpdate<OnHitWithDamageEvent> {
 
         [With(typeof(DamageColliderCreateRequest))] Query Query;
         private IPool<DamageColliderCreateRequest> requests;
-        private readonly Collider[] _colliders = new Collider[32];
+        private readonly Collider[] _colliders = new Collider[1024];
         public void OnUpdate(float deltaTime) {
 
             foreach (ref var entity in Query) {
                 ref var request = ref requests.Get(ref entity);
                 var hits = Physics.OverlapSphereNonAlloc(request.pos, request.radius, _colliders);
-
+                
                 for (int i = 0; i < hits; i++) {
                     if (_colliders[i].gameObject.TryGetComponent(out IEntityLink link)) {
                         ref var e = ref link.Entity;
@@ -319,7 +326,6 @@ namespace Rogue {
                                 to = link.Entity,
                                 amount = request.amount
                             });
-                            
                             request.owner.Add(new OnHitWithDamageEvent());
                         }
                     }
@@ -333,14 +339,16 @@ namespace Rogue {
         [With(typeof(TakeHitEvent))]
         private Query eventsQuery;
         private IPool<TakeHitEvent> events;
+        private IPool<Translation> translations;
         private World world;
-
+        private ITextService _textService;
         public void OnUpdate(float deltaTime) {
             foreach (ref var entity in eventsQuery) {
                 ref var damageEvent = ref events.Get(ref entity);
                 ref var h = ref damageEvent.to.Get<Health>();
-                damageEvent.@from.Add(new DamagePerFrame{amount = damageEvent.amount});
+                damageEvent.@from.Get<DamagePerFrame>().amount += damageEvent.amount;
                 h.current -= damageEvent.amount;
+                _textService.Show(translations.Get(ref entity).position + Vector3.up, $"-{damageEvent.amount}", Color.white);
                 if (h.current <= 0) {
                     damageEvent.to.Add<DeathEvent>();
                 }
@@ -352,6 +360,8 @@ namespace Rogue {
         public int amount;
     }
     sealed class DeathEventSystem : ISystem {
+        private IObjectPool _pool;
+        [With(typeof(DeathEvent), typeof(DeathEffectParticle), typeof(Translation))] private Query Query;
         public void OnUpdate(float deltaTime) {
             foreach (ref var entity in Query) {
                 _pool.Spawn(entity.Get<DeathEffectParticle>().value, entity.Get<Translation>().position,
@@ -359,15 +369,12 @@ namespace Rogue {
                 entity.Destroy();
             }
         }
-
-        private IObjectPool _pool;
-        [With(typeof(DeathEvent), typeof(DeathEffectParticle), typeof(Translation))] private Query Query;
     }
     sealed class ReactOnTakingHitSystem : ISystem {
         [With(typeof(TakeHitEvent))] Query q;
         public void OnUpdate(float dt) {
             foreach (ref var entity in q) {
-                entity.doScale(1, 2f, 0.15f).WithEasing(Easings.EasingType.BounceEaseIn).WithLoop(2, LoopType.Yoyo);
+                entity.doScale(1, 1.2f, 0.15f).WithEasing(Easings.EasingType.BounceEaseIn).WithLoop(2, LoopType.Yoyo);
             }
         }
     }
@@ -441,12 +448,12 @@ namespace Rogue {
                         break;
                     case TargetSearch.Nearest:
                         if (!enemeies.IsEmpty) {
+                            
                             var nearestDistance = float.MaxValue;
                             Entity nearest = enemeies.GetEntity(0);
                             foreach (ref var enemy in enemeies) {
                                 ref var translation = ref translations.Get(ref enemy);
                                 ref var pTranslation = ref translations.Get(ref entity);
-
                                 var distance = Vector3.Distance(translation.position, pTranslation.position);
                                 if (distance < nearestDistance) {
                                     nearestDistance = distance;
@@ -463,7 +470,7 @@ namespace Rogue {
     }
     
     sealed class SearchTargetSystem : ISystem {
-        [With(typeof(TargetSearchType), typeof(AttackTarget))] private Query query;
+        [With(typeof(TargetSearchType), typeof(AttackTarget))][Without(typeof(Player))] private Query query;
         [With(typeof(Translation), typeof(EnemyTag))] private Query enemeies;
         public void OnUpdate(float deltaTime) {
             foreach (ref var entity in query) {
@@ -499,7 +506,7 @@ namespace Rogue {
                 ref var attack = ref entity.Get<Attack>();
                 var pos = target.value.Get<Translation>().position;
                 _world.CreateEntity().Add(new DamageColliderCreateRequest {
-                    owner = entity,
+                    owner = entity.GetOwner(),
                     amount = entity.Get<Damage>().value,
                     pos = pos,
                     radius = attack.radius
@@ -509,18 +516,18 @@ namespace Rogue {
 
                 var e = Pool.Spawn(attack.viewPrefab, pos, Quaternion.identity);
                 
-                //e.Entity.Get<Translation>().scale = Vector3.one * attack.radius;
+                e.Entity.Get<Translation>().scale = Vector3.one * attack.radius;
             }
         }
     }
     
     sealed class TriggeredOnHitSystem : ISystem {
         [With(typeof(Attack),typeof(AttackTarget),typeof(OnHitAbility),typeof(OnTriggerAbilityEvent))]
-        [Without(typeof(Cooldown))] 
-        Query Query;
+        [Without(typeof(Cooldown))] Query Query;
         private World _world;
         private IObjectPool Pool;
         public void OnUpdate(float deltaTime) {
+            Span<DamageColliderCreateRequest> s = stackalloc DamageColliderCreateRequest[1];
             foreach (ref var entity in Query) {
                 entity.Remove<OnTriggerAbilityEvent>();
                 ref var target = ref entity.Get<AttackTarget>();
@@ -529,8 +536,9 @@ namespace Rogue {
                 }
                 ref var attack = ref entity.Get<Attack>();
                 var pos = target.value.Get<Translation>().position;
-                _world.CreateEntity().Add(new DamageColliderCreateRequest {
-                    owner = entity,
+                _world.CreateEntity()
+                    .Add(new DamageColliderCreateRequest {
+                    owner = entity.GetOwner(),
                     amount = entity.Get<Damage>().value,
                     pos = pos,
                     radius = attack.radius
@@ -540,7 +548,7 @@ namespace Rogue {
 
                 var e = Pool.Spawn(attack.viewPrefab, pos, Quaternion.identity);
                 
-                //e.Entity.Get<Translation>().scale = Vector3.one * attack.radius;
+                e.Entity.Get<Translation>().scale = Vector3.one * attack.radius;
             }
         }
     }
@@ -556,13 +564,15 @@ namespace Rogue {
         [With(typeof(Vampire),typeof(OnHitAbility),typeof(OnTriggerAbilityEvent))]
         private Query query;
         private IPool<Vampire> vampires;
+        
         public void OnUpdate(float deltaTime) {
             foreach (ref var entity in query) {
                 ref var vampire = ref vampires.Get(ref entity);
                 ref var targetToHeal = ref entity.GetOwner();
                 var damaged = targetToHeal.Get<DamagePerFrame>().amount;
 
-                var healAmount = (int)(damaged / 100 * vampire.pernenteFromDamage);
+                var healAmount = (int)(damaged * vampire.pernenteFromDamage * 0.01f);
+                //targetToHeal.Add(new HealEvent{amount = healAmount});
                 targetToHeal.Add(new HealEvent{amount = healAmount});
             }
         }
@@ -572,8 +582,10 @@ namespace Rogue {
         [With(typeof(Health),typeof(HealEvent))]
         private Query query;
 
+        private IPool<Translation> translations;
         private IPool<HealEvent> healEvents;
         private IPool<Health> healthes;
+        private ITextService _textService;
 
         public void OnUpdate(float deltaTime) {
             foreach (ref var entity in query) {
@@ -581,7 +593,7 @@ namespace Rogue {
                 ref var health = ref healthes.Get(ref entity);
 
                 health.current += healEvent.amount;
-
+                _textService.Show(translations.Get(ref entity).position + Vector3.up, $"+{healEvent.amount}", Color.green);
                 if (health.max < health.current)
                     health.current = health.max;
             }
@@ -606,6 +618,9 @@ namespace Rogue {
 
         public PauseService() {
             _pausebles = Object.FindObjectsOfType<MonoBehaviour>(true).OfType<IPauseble>().ToArray();
+            SceneAPI.OnLoad(((scene, mode) => {
+                _pausebles = Object.FindObjectsOfType<MonoBehaviour>(true).OfType<IPauseble>().ToArray();
+            }));
         }
         
         void IPauseSerivce.Pause() {
@@ -619,6 +634,20 @@ namespace Rogue {
             Time.timeScale = 1f;
             foreach (var pauseble in _pausebles) {
                 pauseble.Pause(false);
+            }
+        }
+    }
+
+    struct TotalLifeTime : IComponent {
+        public float value;
+    }
+
+    sealed class TotalLifeTimeSystem : ISystem {
+        [With(typeof(TotalLifeTime))] private Query _query;
+        public void OnUpdate(float deltaTime) {
+            foreach (ref var entity in _query) {
+                entity.Get<TotalLifeTime>().value += deltaTime;
+
             }
         }
     }

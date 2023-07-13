@@ -15,7 +15,15 @@ namespace Rogue {
             }
             else {
                 time = TIME;
-                EntityLink.Spawn(prefab, points[Random.Range(0, points.Length - 1)].position, Quaternion.identity, World.Default);
+                var offset = new Vector3(Random.Range(-5f, 5f), 0, Random.Range(-5f, 5f));
+                var e = EntityLink.Spawn(prefab, points[Random.Range(0, points.Length - 1)].position + offset, Quaternion.identity, World.Default);
+
+                if (Random.value > .95f) {
+                    e.Get<Wargon.Ecsape.Components.Translation>().scale = Vector3.one * 3;
+                    ref var h = ref e.Get<Health>();
+                    h.max = 400;
+                    h.current = 400;
+                }
             }
         }
     }
