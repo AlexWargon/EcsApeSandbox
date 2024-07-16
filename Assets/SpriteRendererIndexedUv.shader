@@ -36,18 +36,29 @@ Shader "Instanced/SpriteRendererIndexedUv" {
                 float Scale;
                 float4 Color;
             };
+
+            struct AnimationData
+            {
+                int len;
+                int index;
+            };
             //StructuredBuffer<SpriteRender> SpriteRenders;
             // xyz is the position, w is the rotation
             StructuredBuffer<float4> translationAndRotationBuffer;
+            
             StructuredBuffer<float> scaleBuffer;
-             
+            
             StructuredBuffer<float4> colorsBuffer;
- 
-            // Note here that uvBuffer is only the available UV coordinates
-            // An int value from uvIndexBuffer would then index the uvBuffer
+            
             StructuredBuffer<float4> uvBuffer;
+            
             StructuredBuffer<int> uvIndexBuffer;
- 
+            
+            StructuredBuffer<int> flipBuffer;
+
+            StructuredBuffer<int> animationIndexBuffer;
+
+            StructuredBuffer<AnimationData> animationDataBuffer;
             struct v2f {
                 float4 pos : SV_POSITION;
                 float2 uv: TEXCOORD0;
@@ -69,26 +80,32 @@ Shader "Instanced/SpriteRendererIndexedUv" {
             v2f vert(appdata_full v, const uint instanceID : SV_InstanceID) {
                 float4 translationAndRot = translationAndRotationBuffer[instanceID];
                 const int uvIndex = uvIndexBuffer[instanceID];
-                float4 uv = uvBuffer[uvIndex];
-                 
+                
+                const int flip = flipBuffer[instanceID];
+                const int animationIndex = animationIndexBuffer[instanceID];
+                const AnimationData animationData = animationDataBuffer[instanceID];
+                float4 uv = uvBuffer[uvIndex + animationIndex];
+                uv.x *= flip;
                 //rotate the vertex
                 v.vertex = mul(v.vertex - float4(0.5, 0.5, 0,0), rotationZMatrix(translationAndRot.w));
-                 
                 //scale it
                 const float scale = scaleBuffer[instanceID];
+               
                 float3 worldPosition = translationAndRot.xyz + (v.vertex.xyz * scale);
-                 
                 v2f o;
                 o.pos = UnityObjectToClipPos(float4(worldPosition, 1.0f));
-                 
                 // XY here is the dimension (width, height). 
                 // ZW is the offset in the texture (the actual UV coordinates)
                 o.uv =  v.texcoord * uv.xy + uv.zw;
-                 
+
                 o.color = colorsBuffer[instanceID];
                 return o;
             }
- 
+            
+            float2 TilingAndOffset(float2 UV, float2 Tiling, float2 Offset)
+            {
+                return UV * Tiling + Offset;
+            }
             fixed4 frag(v2f i, out float depth : SV_Depth) : SV_Target {
                 fixed4 col = tex2D(_MainTex, i.uv) * i.color;
                 clip(col.a - _Cutoff);

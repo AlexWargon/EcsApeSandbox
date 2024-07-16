@@ -10,13 +10,12 @@ namespace Rogue {
         [SerializeField] private Image _icon;
         [SerializeField] private Image _background;
         [SerializeField] private Image _border;
-        [SerializeField] private ItemData _itemData;
+        [SerializeReference] private ItemData _itemData;
         public int Index;
         public Action OnAddItem;
         public Action<InventorySlot> OnClick, OnRemove;
         public ref ItemData Data => ref _itemData;
         public bool IsEmpty { get; private set; } = true;
-
         public void OnPointerClick(PointerEventData eventData) {
             if (IsEmpty) return;
             //Debug.Log("CLICK");

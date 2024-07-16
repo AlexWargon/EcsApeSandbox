@@ -5,7 +5,6 @@ using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
 using UnityEngine;
 using Wargon.Ecsape;
-using Component = Wargon.Ecsape.Component;
 
 namespace Rogue {
     public class SaveService {
@@ -68,7 +67,7 @@ namespace Rogue {
                 var component = components[index];
                 var cType = component.GetType();
                 saveData.Components[index] = new ComponentSave {
-                    TypeIndex = Component.GetIndex(cType),
+                    TypeIndex = ComponentMeta.GetIndex(cType),
                     TypeName = cType.Name,
                     FullTypeName = cType.FullName,
                     Value = component

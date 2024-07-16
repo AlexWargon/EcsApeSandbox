@@ -37,6 +37,7 @@ namespace Rogue {
         public void SetLastSelected(ItemData item) => lastSelected = item;
 
         public void SetNewInventory(Inventory inventory) {
+            
             Inventory = inventory;
             
             var loots = DI.Get<LootServise>();
@@ -54,7 +55,7 @@ namespace Rogue {
                     bagValueChild.Entity = newChild;
                     bagValueChild.Entity.Get<ViewGO>().GameObject.SetActive(false);
                     equipment.runes.Add(newChild);
-                    newChild.Add(new EquipedTag());
+                    //newChild.Add(new EquipedTag());
                 }
             }
 
@@ -66,6 +67,7 @@ namespace Rogue {
                 activeSlotItem.Entity.Get<ViewGO>().GameObject.SetActive(false);
                 equipmentList.value.Add(newItem);
                 activeSlotItem.Entity.Get<TransformReference>().value.SetParent(BagParrent);
+                activeSlotItem.Entity.Add<EquipedTag>();
                 ref var equipment = ref activeSlotItem.Entity.Get<Equipment>();
                 ref var trasform = ref activeSlotItem.Entity.Get<TransformReference>().value;
                 foreach (var activeItemChild in activeSlotItem.Childs) {
@@ -74,7 +76,7 @@ namespace Rogue {
                     activeItemChild.Entity = newChild;
                     activeItemChild.Entity.Get<ViewGO>().GameObject.SetActive(false);
                     equipment.runes.Add(newChild);
-                    newChild.Add(new EquipedTag());
+                    newChild.Add<EquipedTag>();
                     newChild.Get<TransformReference>().value.SetParent(trasform);
                 }
             }

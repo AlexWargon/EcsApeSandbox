@@ -1,18 +1,18 @@
 using System;
-using System.Linq;
+using System.Collections.Generic;
 using Animation2D;
-using Unity.Collections;
-using Unity.Jobs;
 using UnityEngine;
 using Wargon.Ecsape;
 using Wargon.Ecsape.Components;
 using Wargon.Ecsape.Tween;
 using Wargon.UI;
-using Object = UnityEngine.Object;
 using Random = UnityEngine.Random;
 
 namespace Rogue {
-
+    public static class GameStaticData {
+        public static string MainWorldName;
+        public static World MainWorld => World.GetOrCreate(MainWorldName);
+    }
     [DefaultExecutionOrder(ExecutionOrder.EcsMain)] 
     public class GameCore : WorldHolder, IPauseble {
         [SerializeField] private EntityLink Player;
@@ -20,10 +20,14 @@ namespace Rogue {
         private IObjectPool objectPool;
         private LootServise _lootServise;
         private InventoryService _inventoryService;
+        private SaveService _saveService;
+        private const string TRIGGERS = "TRIGGERS;";
+        private const string DAMAGE = "DAMAGE;";
         void Awake()
         {
             DI.Build(this);
             world = World.Default;
+            GameStaticData.MainWorldName = world.Name;
             _lootServise.SetWorld(world);
             DI.Register<IEntityFabric>().From(new EntityFabric().Init(world));
             
@@ -33,21 +37,27 @@ namespace Rogue {
                 .Add<PlayerInputSystem>()
                 .Add<PlayerAttackSystem>()
                 .AddGroup(new EnemyGroup())
-                .Add<PreTriggerAbilitiesListSystem>()
-                .Add<PreTriggerEquipmentListSystem>()
-                .Add<TriggerEquipmentListSystem>()
-                .Add<TriggerAbilitiesSystem>()
-                .Add<BonusShotOnShotAbilitySystem>()
+                
+                .AddGroup(new Systems.Group(TRIGGERS)
+                    .Add<PreTriggerAbilitiesListSystem>()
+                    .Add<PreTriggerEquipmentListSystem>()
+                    .Add<TriggerEquipmentListSystem>()
+                    .Add<TriggerAbilitiesSystem>()
+                    .Add<BonusShotOnShotAbilitySystem>()
+                    .Add<TriggeredOnAttackSystem>()
+                    .Add<TriggeredAttackOnHitSystem>()
+                    .Add<TriggerVampireSystem>())
+                
                 .Add<PlayerSearchTargetSystem>()
                 .Add<SearchTargetSystem>()
-                .Add<TriggeredOnAttackSystem>()
-                .Add<TriggeredOnHitSystem>()
-                .Add<TriggerVampireSystem>()
-                .Add<HealSystem>()
                 .Add<SpawnPrefabsOnShot>()
-                .Add<HitBoxCollisionSystem>()
-                .Add<DamageEntitiesSystem>()
-                .Add<ReactOnTakingHitSystem>()
+                .AddGroup(new Systems.Group(DAMAGE)
+                    .Add<HitBoxCollisionSystem>()
+                    .Add<DamageEntitiesSystem>()
+                    .Add<HealSystem>()
+                    .Add<ShowDamageSystem>()
+                    .Add<ReactOnTakingHitSystem>())
+                
                 .Add<ProjectileMoveSystem>()
                 .Add<MoveSystem>()
                 .Add<PlayerMoveSystem>()
@@ -64,31 +74,34 @@ namespace Rogue {
             .Init();
             uiService.Spawn<InventoryPopup>(false);
             //uiService.Spawn<RunesPopup>(false);
-            
         }
+
+        private void OnDestroy() {
+            World.Destory(world);
+        }
+
         void Update()
         {
-            //if(Paused) return;
+
+            if(Paused) return;
             world.OnUpdate(Time.deltaTime);
-            
-            
+        
             if (Input.GetKeyDown(KeyCode.V)) {
                 // ref var ab = ref World.GetEntity(0).Get<AbilityList>();
                 // ab.AbilityEntities.Add(abilitiesFabric.GetRandom());
-                
                 ref var loot = ref _lootServise.SpawnRandomItem(Vector3.zero);
                 _inventoryService.AddItem(ref loot);
-                
             }
             if (Input.GetKeyDown(KeyCode.C)) {
                 uiService.Show<InventoryPopup>();
             }
             if (Input.GetKeyDown(KeyCode.X)) {
-                DI.Get<SaveService>().SaveInventory();
+                _saveService.SaveInventory();
             }
             if (Input.GetKeyDown(KeyCode.Z)) {
-                DI.Get<SaveService>().LoadInventory();
+                _saveService.LoadInventory();
             }
+
         }
 
         private void FixedUpdate() {
@@ -96,14 +109,14 @@ namespace Rogue {
         }
 
         public void Destroy() {
-            
+            World.Destory(world);
         }
 
         public bool Paused { get; set; }
     }
 
     sealed class OnPlayerSpawnSystem : ISystem {
-        [With(typeof(Player), typeof(GameObjectSpawnedEvent))] Query Query;
+        [With(typeof(Player), typeof(EntityLinkSpawnedEvent))] Query Query;
         private InventoryService _inventoryService;
 
         public void OnUpdate(float deltaTime) {
@@ -114,8 +127,8 @@ namespace Rogue {
         }
     }
     sealed class ShotOnHitAbilitySystem : ISystem, IOnCreate {
-        private Query Query;
-        private IEntityFabric Fabric;
+        Query Query;
+        IEntityFabric Fabric;
         public void OnCreate(World world) {
             Query = world.GetQuery().WithAll<BonusShotAbility, OnTriggerAbilityEvent>();
         }
@@ -129,50 +142,21 @@ namespace Rogue {
         }
     }
 
-    public abstract class SetterBase<TBonus> where TBonus : struct, IComponent {
-        protected World world;
-        public abstract void Apply(ref TBonus bonus, ref Entity entity);
-        public abstract void Remove(ref TBonus bonus, ref Entity entity);
-    }
-
-    public sealed class OnShotAbilitySetter : SetterBase<OnAttackAbility> {
-        public override void Apply(ref OnAttackAbility bonus, ref Entity entity) {
-            
-        }
-
-        public override void Remove(ref OnAttackAbility bonus, ref Entity entity) {
-            
-        }
-    }
     public sealed class RunTimeData {
         public Entity Player;
-    }
-
-    public class MonoAnimationConverter {
-        [SerializeField] private Animation Animation;
-        [Button]
-        public void Convert() {
-            var clip = Animation.clip;
-            
-        }
-    }
-    public unsafe struct Animation3D : IComponent {
-        public Vector3* poses;
-        public int frameRate;
-        
     }
 
     public struct AnimatorRef : IComponent {
         public Animator value;
     }
     public class AnimationSystem : ISystem, IOnCreate {
-        public void OnCreate(World world) {
-            Query = world.GetQuery().WithAll<AnimatorRef, InputData>();
-        }
-
         private Query Query;
         private IPool<AnimatorRef> animators;
         private IPool<InputData> inputs;
+
+        public void OnCreate(World world) {
+            Query = world.GetQuery().WithAll<AnimatorRef, InputData>();
+        }
 
         public void OnUpdate(float deltaTime) { 
             foreach (ref var entity in Query) {
@@ -196,22 +180,14 @@ namespace Rogue {
     /// <summary>
     /// trigger items on character
     /// </summary>
-    sealed class PreTriggerEquipmentListSystem : ISystem, IOnCreate {
-        private Query OnShotEvents;
-        private Query OnHitEvents;
-        private Query OnDamageEvents;
-        private Query OnKillEvents;
-        private Query OnCritEvents;
-        private Query OnTakeDamageEvents;
+    sealed class PreTriggerEquipmentListSystem : ISystem {
+        [With(typeof(EquipmentList), typeof(OnAttackEvent))]            Query OnShotEvents;
+        [With(typeof(EquipmentList), typeof(OnHitPhysicsEvent))]        Query OnHitEvents;
+        [With(typeof(EquipmentList), typeof(OnHitWithDamageEvent))]     Query OnDamageEvents;
+        [With(typeof(EquipmentList), typeof(OnKillEvent))]              Query OnKillEvents;
+        [With(typeof(EquipmentList), typeof(OnCritEvent))]              Query OnCritEvents;
+        [With(typeof(EquipmentList), typeof(OnTakeDamageEvent))]        Query OnTakeDamageEvents;
         private IPool<EquipmentList> abilities;
-        public void OnCreate(World world) {
-            OnShotEvents = world.GetQuery().WithAll<OnAttackEvent, EquipmentList>();
-            OnHitEvents = world.GetQuery().WithAll<OnHitPhysicsEvent, EquipmentList>();
-            OnDamageEvents = world.GetQuery().WithAll<OnHitWithDamageEvent, EquipmentList>();
-            OnKillEvents = world.GetQuery().WithAll<OnKillEvent, EquipmentList>();
-            OnCritEvents = world.GetQuery().WithAll<OnCritEvent, EquipmentList>();
-            OnTakeDamageEvents = world.GetQuery().WithAll<OnTakeDamageEvent, EquipmentList>();
-        }
 
         private void Pretrigger<TEvent>(Query query) where TEvent : struct , IComponent {
             if (!query.IsEmpty) {
@@ -306,25 +282,30 @@ namespace Rogue {
         }
     }
 
-    sealed class HitBoxCollisionSystem : ISystem, IClearBeforeUpdate<TakeHitEvent>, IClearBeforeUpdate<OnHitWithDamageEvent> {
+    sealed class HitBoxCollisionSystem : 
+        ISystem, 
+        IClearBeforeUpdate<TakeHitEvent>, 
+        IClearBeforeUpdate<OnHitWithDamageEvent> {
 
         [With(typeof(DamageColliderCreateRequest))] Query Query;
         private IPool<DamageColliderCreateRequest> requests;
-        private readonly Collider[] _colliders = new Collider[1024];
+        private readonly Collider[] _colliders = new Collider[256];
+        private World _world;
         public void OnUpdate(float deltaTime) {
-
             foreach (ref var entity in Query) {
                 ref var request = ref requests.Get(ref entity);
                 var hits = Physics.OverlapSphereNonAlloc(request.pos, request.radius, _colliders);
                 
                 for (int i = 0; i < hits; i++) {
                     if (_colliders[i].gameObject.TryGetComponent(out IEntityLink link)) {
+                        
                         ref var e = ref link.Entity;
                         if (e.Has<EnemyTag>()) {
-                            e.Add(new TakeHitEvent {
+                            _world.CreateEntity().
+                            Add(new TakeHitEvent {
                                 @from    = request.owner,
-                                to = link.Entity,
-                                amount = request.amount
+                                to       = e,
+                                amount   = request.amount
                             });
                             request.owner.Add(new OnHitWithDamageEvent());
                         }
@@ -335,59 +316,84 @@ namespace Rogue {
         }
     }
 
-    sealed class DamageEntitiesSystem : ISystem, IClearBeforeUpdate<DamagePerFrame> {
+    sealed class DamageEntitiesSystem : ISystem, IClearBeforeUpdate<MakeDamagePerFrame>, IClearBeforeUpdate<TakeDamagePerFrame> {
+        
         [With(typeof(TakeHitEvent))]
-        private Query eventsQuery;
-        private IPool<TakeHitEvent> events;
-        private IPool<Translation> translations;
-        private World world;
-        private ITextService _textService;
+        Query eventsQuery;
+        World world;
+        IPool<TakeHitEvent> events;
+        IPool<Translation> translations;
+        ITextService _textService;
+        
         public void OnUpdate(float deltaTime) {
             foreach (ref var entity in eventsQuery) {
                 ref var damageEvent = ref events.Get(ref entity);
                 ref var h = ref damageEvent.to.Get<Health>();
-                damageEvent.@from.Get<DamagePerFrame>().amount += damageEvent.amount;
+                damageEvent.@from.Get<MakeDamagePerFrame>().amount += damageEvent.amount;
+                damageEvent.to.Get<TakeDamagePerFrame>().amount += damageEvent.amount;
                 h.current -= damageEvent.amount;
-                _textService.Show(translations.Get(ref entity).position + Vector3.up, $"-{damageEvent.amount}", Color.white);
+                _textService.Show(translations.Get(ref damageEvent.to).position + Vector3.up, $"-{damageEvent.amount}", Color.white);
+                
                 if (h.current <= 0) {
                     damageEvent.to.Add<DeathEvent>();
                 }
+                entity.Destroy();
             }
         }
     }
-    
-    public struct DamagePerFrame : IComponent {
+    sealed class ShowDamageSystem : ISystem {
+        
+        [With(typeof(TakeDamagePerFrame))]
+        Query eventsQuery;
+        World world;
+        IPool<TakeDamagePerFrame> events;
+        IPool<Translation> translations;
+        ITextService _textService;
+        
+        public void OnUpdate(float deltaTime) {
+            foreach (ref var entity in eventsQuery) {
+                ref var damageEvent = ref events.Get(ref entity);
+                _textService.Show(translations.Get(ref entity).position + Vector3.up, $"-{damageEvent.amount}", Color.white);
+            }
+        }
+    }
+    public struct MakeDamagePerFrame : IComponent {
         public int amount;
     }
+
+    public struct TakeDamagePerFrame : IComponent {
+        public int amount;
+    }
+    
     sealed class DeathEventSystem : ISystem {
         private IObjectPool _pool;
         [With(typeof(DeathEvent), typeof(DeathEffectParticle), typeof(Translation))] private Query Query;
         public void OnUpdate(float deltaTime) {
             foreach (ref var entity in Query) {
-                _pool.Spawn(entity.Get<DeathEffectParticle>().value, entity.Get<Translation>().position,
-                    Quaternion.identity);
+                _pool.Spawn(entity.Get<DeathEffectParticle>().value, entity.Get<Translation>().position, Quaternion.identity);
                 entity.Destroy();
             }
         }
     }
     sealed class ReactOnTakingHitSystem : ISystem {
-        [With(typeof(TakeHitEvent))] Query q;
+        [With(typeof(TakeDamagePerFrame))] Query q;
         public void OnUpdate(float dt) {
             foreach (ref var entity in q) {
                 entity.doScale(1, 1.2f, 0.15f).WithEasing(Easings.EasingType.BounceEaseIn).WithLoop(2, LoopType.Yoyo);
             }
         }
     }
-    sealed class PoolObjectLifeTimeSystem : ISystem, IOnCreate {
-        private IObjectPool pool;
-        private IPool<Pooled> pooleds;
-        private IPool<ViewLink> views;
-        private World _world; 
+    
+    
+    
+    sealed class PoolObjectLifeTimeSystem : ISystem {
+        IObjectPool pool;
+        IPool<Pooled> pooleds;
+        IPool<ViewLink> views;
+        World _world; 
+        [With(typeof(Pooled),typeof(ViewLink))][Without(typeof(StaticTag))]
         Query query;
-        
-        public void OnCreate(World world) {
-            query = world.GetQuery().WithAll<Pooled, ViewLink>().Without<StaticTag>();
-        }
+
         public void OnUpdate(float deltaTime) {
             foreach (ref var entity in query) {
                 ref var pooled = ref pooleds.Get(ref entity);
@@ -516,26 +522,26 @@ namespace Rogue {
 
                 var e = Pool.Spawn(attack.viewPrefab, pos, Quaternion.identity);
                 
-                e.Entity.Get<Translation>().scale = Vector3.one * attack.radius;
+                //e.Entity.Get<Translation>().scale = Vector3.one * attack.radius;
             }
         }
     }
     
-    sealed class TriggeredOnHitSystem : ISystem {
-        [With(typeof(Attack),typeof(AttackTarget),typeof(OnHitAbility),typeof(OnTriggerAbilityEvent))]
-        [Without(typeof(Cooldown))] Query Query;
-        private World _world;
-        private IObjectPool Pool;
+    sealed class TriggeredAttackOnHitSystem : ISystem {
+        [With(typeof(Attack),typeof(AttackTarget),typeof(OnHitAbility),typeof(OnTriggerAbilityEvent)), Without(typeof(Cooldown))] 
+        Query _query;
+        World _world;
+        IObjectPool _pool;
         public void OnUpdate(float deltaTime) {
-            Span<DamageColliderCreateRequest> s = stackalloc DamageColliderCreateRequest[1];
-            foreach (ref var entity in Query) {
+
+            foreach (ref var entity in _query) {
                 entity.Remove<OnTriggerAbilityEvent>();
-                ref var target = ref entity.Get<AttackTarget>();
-                if (target.value.IsNull()) {
+                ref var target = ref entity.Get<AttackTarget>().value;
+                if (target.IsNull()) {
                     continue;
                 }
                 ref var attack = ref entity.Get<Attack>();
-                var pos = target.value.Get<Translation>().position;
+                var pos = target.Get<Translation>().position;
                 _world.CreateEntity()
                     .Add(new DamageColliderCreateRequest {
                     owner = entity.GetOwner(),
@@ -546,9 +552,9 @@ namespace Rogue {
                 
                 entity.Add(new Cooldown{Value = attack.delay});
 
-                var e = Pool.Spawn(attack.viewPrefab, pos, Quaternion.identity);
+                var e = _pool.Spawn(attack.viewPrefab, pos, Quaternion.identity);
                 
-                e.Entity.Get<Translation>().scale = Vector3.one * attack.radius;
+                //e.Entity.Get<Translation>().scale = Vector3.one * attack.radius;
             }
         }
     }
@@ -561,31 +567,29 @@ namespace Rogue {
         public int amount;
     }
     sealed class TriggerVampireSystem : ISystem, IClearBeforeUpdate<HealEvent> {
-        [With(typeof(Vampire),typeof(OnHitAbility),typeof(OnTriggerAbilityEvent))]
-        private Query query;
+        [With(typeof(Vampire), typeof(OnHitAbility), typeof(OnTriggerAbilityEvent))] Query query;
         private IPool<Vampire> vampires;
         
         public void OnUpdate(float deltaTime) {
             foreach (ref var entity in query) {
                 ref var vampire = ref vampires.Get(ref entity);
                 ref var targetToHeal = ref entity.GetOwner();
-                var damaged = targetToHeal.Get<DamagePerFrame>().amount;
+                int damaged = targetToHeal.Get<MakeDamagePerFrame>().amount;
 
                 var healAmount = (int)(damaged * vampire.pernenteFromDamage * 0.01f);
-                //targetToHeal.Add(new HealEvent{amount = healAmount});
-                targetToHeal.Add(new HealEvent{amount = healAmount});
+                if(healAmount < 1) continue;
+                targetToHeal.Add(new HealEvent { amount = healAmount });
             }
         }
     }
 
     sealed class HealSystem : ISystem {
         [With(typeof(Health),typeof(HealEvent))]
-        private Query query;
-
-        private IPool<Translation> translations;
-        private IPool<HealEvent> healEvents;
-        private IPool<Health> healthes;
-        private ITextService _textService;
+        Query query;
+        IPool<Translation> translations;
+        IPool<HealEvent> healEvents;
+        IPool<Health> healthes;
+        ITextService _textService;
 
         public void OnUpdate(float deltaTime) {
             foreach (ref var entity in query) {
@@ -593,6 +597,7 @@ namespace Rogue {
                 ref var health = ref healthes.Get(ref entity);
 
                 health.current += healEvent.amount;
+                
                 _textService.Show(translations.Get(ref entity).position + Vector3.up, $"+{healEvent.amount}", Color.green);
                 if (health.max < health.current)
                     health.current = health.max;
@@ -602,41 +607,7 @@ namespace Rogue {
     public struct DeathEffectParticle : IComponent {
         public EntityLink value;
     }
-    public interface IPauseble {
-        public bool Paused { get; set; }
-        public void Pause(bool value) {
-            Paused = value;
-        }
-    }
 
-    public interface IPauseSerivce {
-        void Pause();
-        void Unpause();
-    }
-    public sealed class PauseService : IPauseSerivce {
-        private IPauseble[] _pausebles;
-
-        public PauseService() {
-            _pausebles = Object.FindObjectsOfType<MonoBehaviour>(true).OfType<IPauseble>().ToArray();
-            SceneAPI.OnLoad(((scene, mode) => {
-                _pausebles = Object.FindObjectsOfType<MonoBehaviour>(true).OfType<IPauseble>().ToArray();
-            }));
-        }
-        
-        void IPauseSerivce.Pause() {
-            Time.timeScale = 0f;
-            foreach (var pauseble in _pausebles) {
-                pauseble.Pause(true);
-            }
-        }
-
-        void IPauseSerivce.Unpause() {
-            Time.timeScale = 1f;
-            foreach (var pauseble in _pausebles) {
-                pauseble.Pause(false);
-            }
-        }
-    }
 
     struct TotalLifeTime : IComponent {
         public float value;
@@ -647,9 +618,39 @@ namespace Rogue {
         public void OnUpdate(float deltaTime) {
             foreach (ref var entity in _query) {
                 entity.Get<TotalLifeTime>().value += deltaTime;
-
             }
         }
+    }
+
+    struct EntityStats : IOnAddToEntity, IComponent {
+        public List<Entity> Entities;
+        public void OnAdd() {
+            Entities ??= new List<Entity>();
+        }
+        public void Add(Entity entity) { Entities.Add(entity); }
+        public void Remove(Entity entity) { Entities.Remove(entity); }
+    }
+
+    public struct ListTest : IComponent {
+        public List<int> Test;
+    }
+    public struct ArrayTest : IComponent {
+        public int[] Test;
+    }
+
+    public struct ListTest2 : IComponent {
+        public List<EntityLink> Links;
+    }
+    [Serializable]
+    public struct TestData {
+        public int value1;
+        public Vector2 value2;
+        public GameObject value3;
+    }
+    
+    public struct TestNested : IComponent {
+        public float value;
+        public TestData valueNested;
     }
 }
 

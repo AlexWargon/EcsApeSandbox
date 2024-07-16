@@ -17,13 +17,13 @@ namespace Rogue {
 
     public struct CurrentWeapons : IComponent , IOnAddToEntity{
         public List<EntityLink> Entities;
-        public void OnCreate() {
+        public void OnAdd() {
             Entities ??= new List<EntityLink>();
         }
     }
     public struct AbilityList : IComponent, IOnAddToEntity {
         public List<Entity> AbilityEntities;
-        public void OnCreate() {
+        public void OnAdd() {
             AbilityEntities = new List<Entity>();
         }
     }
@@ -99,6 +99,8 @@ namespace Rogue {
     public struct Health : IComponent {
         public int current;
         public int max;
+
+        public void Damage(int dmg) => current -= dmg;
     }
 
     [Serializable]

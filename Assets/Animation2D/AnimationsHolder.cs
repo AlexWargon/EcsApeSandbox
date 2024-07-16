@@ -42,9 +42,9 @@ namespace Animation2D {
             instance = this;
         }
 
-        private void Awake() {
-            Instance.RegenerateFile();
-        }
+        // private void Awake() {
+        //     Instance.RegenerateFile();
+        // }
 
         public void RegenerateFile() {
 

@@ -69,8 +69,8 @@ MonoBehaviour:
       type: {class: Attack, ns: Rogue, asm: Game}
       data:
         viewPrefab: {fileID: 1276517977015176655, guid: 86e64e5ad31435b44bad15c70714335b, type: 3}
-        delay: 0.4
-        radius: 6
+        delay: 0.06
+        radius: 3
     - rid: 3141399580865986575
       type: {class: AttackTarget, ns: Rogue, asm: Game}
       data:
@@ -79,10 +79,10 @@ MonoBehaviour:
     - rid: 3141399580865986576
       type: {class: TargetSearchType, ns: Rogue, asm: Game}
       data:
-        value: 1
+        value: 0
     - rid: 3141399580865986579
       type: {class: Damage, ns: Rogue, asm: Game}
       data:
-        value: 14
+        value: 55
     - rid: 3141399580865986581
       type: {class: OnAttackAbility, ns: Rogue, asm: Game}

@@ -1,4 +1,5 @@
 
+using System;
 using UnityEngine;
 
 public class CombineMeshes : MonoBehaviour
@@ -30,4 +31,9 @@ public class CombineMeshes : MonoBehaviour
     }
 }
 
-
+[AttributeUsage(AttributeTargets.Method)]
+public class ButtonAttribute : Attribute {
+    public ButtonAttribute() {
+        
+    }
+}

@@ -1,5 +1,4 @@
-﻿using System;
-using Animation2D;
+﻿using Animation2D;
 using Rogue;
 using UnityEngine;
 using UnityEngine.Events;
@@ -53,4 +52,13 @@ public static class SceneAPI {
 public static class ExecutionOrder {
     public const int Bootstrap = -35;
     public const int EcsMain = -34;
+}
+
+public struct Sprite2D {
+    public Vector4 Color;
+    public Vector4 UV;
+    public int Index;
+}
+public class SpriteRenderManager : MonoBehaviour {
+    
 }

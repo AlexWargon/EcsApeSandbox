@@ -85,7 +85,7 @@ namespace Rogue {
     public struct StatEntities : IComponent, IOnAddToEntity {
         public List<Entity> Value;
 
-        public void OnCreate() {
+        public void OnAdd() {
             Value = new List<Entity>();
         }
     }

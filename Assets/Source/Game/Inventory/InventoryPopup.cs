@@ -197,7 +197,7 @@ namespace Rogue {
     public struct EquipmentList : IComponent, IOnAddToEntity {
         public List<Entity> value;
 
-        public void OnCreate() {
+        public void OnAdd() {
             value ??= new List<Entity>();
         }
     }

@@ -9752,8 +9752,8 @@ MonoBehaviour:
       type: {class: Pooled, ns: Wargon.Ecsape, asm: Ecsape}
       data:
         id: 0
-        lifeTime: 2
-        lifeTimeDefault: 2
+        lifeTime: 2.5
+        lifeTimeDefault: 2.5
 --- !u!199 &1994185340090723871
 ParticleSystemRenderer:
   serializedVersion: 6

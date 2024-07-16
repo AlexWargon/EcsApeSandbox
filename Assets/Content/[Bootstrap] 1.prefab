@@ -98,7 +98,7 @@ MonoBehaviour:
   AbilityList: {fileID: 11400000, guid: 74e7e2910a778ba419199256324a1c9a, type: 2}
   ItemsCollectionsConfig: {fileID: 11400000, guid: 8cf0971ff8e800f4a89e5c9b615f289e, type: 2}
   MainCamera: {fileID: 0}
-  core: {fileID: 0}
+  core: {fileID: 2909783642015453946}
   enemySpawner: {fileID: 0}
   _textRenderService: {fileID: 0}
 --- !u!1 &2909783642015453941
